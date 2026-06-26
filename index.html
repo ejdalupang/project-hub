@@ -161,7 +161,8 @@ body {
   text-transform: uppercase; border: 1px solid var(--border);
   color: var(--muted); background: var(--surface);
 }
-.stat-pill.done  { color: #00ff88; border-color: #00ff8830; background: #00ff8810; }
+.stat-pill.done    { color: #00ff88; border-color: #00ff8830; background: #00ff8810; }
+.stat-pill.ongoing { color: #00d4ff; border-color: #00d4ff30; background: #00d4ff10; }
 .stat-pill.inprog { color: #e8ff00; border-color: #e8ff0030; background: #e8ff0010; }
 .stat-pill.todo  { color: #888; }
 
@@ -199,6 +200,7 @@ body {
 .status-circle:hover { background: rgba(0,0,0,0.12); }
 .status-circle.done { background: rgba(0,0,0,0.2); border-color: rgba(0,0,0,0.3); color: rgba(0,0,0,0.7); }
 .status-circle.in-progress { border-color: rgba(0,0,0,0.35); color: rgba(0,0,0,0.6); }
+.status-circle.ongoing { border-color: rgba(0,0,0,0.35); color: rgba(0,0,0,0.6); border-style: dashed; }
 
 .del-btn {
   background: rgba(0,0,0,0.15); border: none; color: rgba(0,0,0,0.4);
@@ -273,6 +275,7 @@ body {
   margin-bottom: 10px; display: flex; align-items: center; gap: 12px;
 }
 .tl-date::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.tl-date.tl-ongoing { color: #00d4ff; }
 
 /* ── Project notes ── */
 #proj-notes-wrap {
@@ -356,6 +359,99 @@ body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+
+/* ── Task Detail Drawer ── */
+#drawer-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 100;
+}
+#drawer-overlay.open { opacity: 1; pointer-events: all; }
+#task-drawer {
+  position: fixed; top: 0; right: 0; height: 100vh; width: 460px;
+  background: #111; border-left: 1px solid #2a2a2a;
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform 0.22s cubic-bezier(.4,0,.2,1);
+  z-index: 101; overflow: hidden;
+}
+#task-drawer.open { transform: translateX(0); }
+#drawer-header {
+  padding: 20px 24px 16px; border-bottom: 1px solid #1e1e1e; flex-shrink: 0;
+  display: flex; align-items: flex-start; gap: 12px;
+}
+#drawer-color-bar {
+  width: 4px; min-height: 48px; border-radius: 4px; flex-shrink: 0; margin-top: 4px;
+}
+#drawer-title-wrap { flex: 1; min-width: 0; }
+#drawer-title {
+  font-size: 22px; font-weight: 900; letter-spacing: -0.5px;
+  text-transform: uppercase; color: var(--text); outline: none;
+  line-height: 1.15; word-break: break-word;
+}
+#drawer-title:empty::before { content: 'TASK NAME…'; opacity: 0.25; }
+#drawer-close {
+  background: #1e1e1e; border: none; color: var(--muted); cursor: pointer;
+  font-size: 14px; padding: 6px 8px; border-radius: 8px; flex-shrink: 0;
+  transition: background 0.1s, color 0.1s; margin-top: 2px;
+}
+#drawer-close:hover { background: #2a2a2a; color: var(--text); }
+#drawer-meta {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; flex-wrap: wrap;
+}
+.drawer-status-btn {
+  display: flex; align-items: center; gap: 6px; background: #1e1e1e;
+  border: 1px solid #2a2a2a; border-radius: 20px; cursor: pointer;
+  padding: 5px 12px; color: var(--text); font-family: inherit; font-size: 12px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transition: background 0.1s;
+}
+.drawer-status-btn:hover { background: #252525; }
+.drawer-status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.drawer-due-btn {
+  display: flex; align-items: center; gap: 6px; background: #1e1e1e;
+  border: 1px solid #2a2a2a; border-radius: 20px; cursor: pointer;
+  padding: 5px 12px; color: var(--muted); font-family: inherit; font-size: 12px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transition: background 0.1s;
+  position: relative;
+}
+.drawer-due-btn:hover { background: #252525; color: var(--text); }
+.drawer-due-btn.overdue { color: var(--danger); }
+.drawer-due-btn input[type="date"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+}
+#drawer-notes-section {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 16px 24px 0;
+}
+#drawer-notes-label {
+  font-size: 10px; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; flex-shrink: 0;
+}
+#drawer-toolbar {
+  display: flex; gap: 4px; margin-bottom: 10px; flex-shrink: 0;
+  background: #161616; border: 1px solid #222; border-radius: 10px; padding: 4px;
+}
+.tb-btn {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 800; padding: 5px 10px;
+  border-radius: 7px; transition: background 0.1s, color 0.1s;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.tb-btn:hover { background: #222; color: var(--text); }
+.tb-btn.active { background: #2a2a2a; color: var(--text); }
+.tb-sep { width: 1px; background: #222; margin: 4px 2px; }
+#drawer-notes {
+  flex: 1; outline: none; color: #bbb; font-family: inherit;
+  font-size: 14px; line-height: 1.7; overflow-y: auto; padding-bottom: 24px;
+  min-height: 0;
+}
+#drawer-notes:empty::before { content: 'Add notes…'; color: #333; pointer-events: none; }
+#drawer-notes ul, #drawer-notes ol {
+  padding-left: 20px; margin: 4px 0;
+}
+#drawer-notes li { margin: 2px 0; }
+#drawer-notes p { margin: 0; min-height: 1.7em; }
+#drawer-notes:focus { color: #ccc; }
 </style>
 </head>
 <body>
@@ -402,6 +498,41 @@ body {
       <div class="big">Select<br>a Project</div>
       <p>← Choose from the sidebar</p>
     </div>
+  </div>
+</div>
+
+<div id="drawer-overlay"></div>
+<div id="task-drawer">
+  <div id="drawer-header">
+    <div id="drawer-color-bar"></div>
+    <div id="drawer-title-wrap">
+      <div id="drawer-title" contenteditable="true" spellcheck="false"></div>
+    </div>
+    <button id="drawer-close">✕</button>
+  </div>
+  <div id="drawer-meta">
+    <button class="drawer-status-btn" id="drawer-status-btn">
+      <span class="drawer-status-dot" id="drawer-status-dot"></span>
+      <span id="drawer-status-label"></span>
+    </button>
+    <button class="drawer-due-btn" id="drawer-due-btn">
+      <span id="drawer-due-label"></span>
+      <input type="date" id="drawer-date-input">
+    </button>
+  </div>
+  <div id="drawer-notes-section">
+    <div id="drawer-notes-label">Notes</div>
+    <div id="drawer-toolbar">
+      <button class="tb-btn" data-cmd="insertUnorderedList" title="Bullet list">• List</button>
+      <button class="tb-btn" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-cmd="indent" title="Indent">→ Indent</button>
+      <button class="tb-btn" data-cmd="outdent" title="Outdent">← Outdent</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+      <button class="tb-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+    </div>
+    <div id="drawer-notes" contenteditable="true" spellcheck="true"></div>
   </div>
 </div>
 
@@ -480,7 +611,7 @@ function save() {
 }
 
 const proj = () => S.projects.find(p => p.id === S.activeId);
-const SN = { todo: 'in-progress', 'in-progress': 'done', done: 'todo' };
+const SN = { todo: 'in-progress', 'in-progress': 'ongoing', ongoing: 'done', done: 'todo' };
 
 function fmtDate(d) {
   if (!d) return '';
@@ -492,6 +623,7 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 function statusIcon(status) {
   if (status === 'done')        return '✓';
   if (status === 'in-progress') return '◑';
+  if (status === 'ongoing')     return '∞';
   return '';
 }
 
@@ -528,6 +660,7 @@ function kanbanView(p) {
   const cols = [
     { key: 'todo',        label: 'To Do' },
     { key: 'in-progress', label: 'In Progress' },
+    { key: 'ongoing',     label: 'Ongoing' },
     { key: 'done',        label: 'Done' }
   ];
   return `<div id="kanban-view">${cols.map(col => {
@@ -548,14 +681,21 @@ function kanbanView(p) {
 function timelineView(p) {
   if (!p.tasks.length)
     return `<div id="timeline-view"><div class="empty-state"><div class="icon">↕</div><p>No tasks yet</p></div></div>`;
-  const sorted = [...p.tasks].sort((a,b) => {
+  const ongoingTasks = p.tasks.filter(t => t.status === 'ongoing');
+  const rest = p.tasks.filter(t => t.status !== 'ongoing');
+  const sorted = [...rest].sort((a,b) => {
     if (!a.dueDate && !b.dueDate) return 0;
     if (!a.dueDate) return 1; if (!b.dueDate) return -1;
     return new Date(a.dueDate) - new Date(b.dueDate);
   });
   const groups = {};
   sorted.forEach(t => { const k = t.dueDate || '__'; (groups[k] = groups[k] || []).push(t); });
-  return `<div id="timeline-view">${Object.entries(groups).map(([k, tasks]) => `
+  const ongoingSection = ongoingTasks.length ? `
+    <div class="tl-group">
+      <div class="tl-date tl-ongoing">∞ Ongoing</div>
+      ${ongoingTasks.map(t => cardHtml(t)).join('')}
+    </div>` : '';
+  return `<div id="timeline-view">${ongoingSection}${Object.entries(groups).map(([k, tasks]) => `
     <div class="tl-group">
       <div class="tl-date">${k === '__' ? 'No Date' : fmtDate(k)}</div>
       ${tasks.map(t => cardHtml(t)).join('')}
@@ -627,13 +767,15 @@ function renderMain() {
   notesEl.style.height = 'auto';
   notesEl.style.height = Math.max(notesEl.scrollHeight, 40) + 'px';
 
-  const done = p.tasks.filter(t => t.status === 'done').length;
-  const ip   = p.tasks.filter(t => t.status === 'in-progress').length;
-  const todo = p.tasks.filter(t => t.status === 'todo').length;
+  const done    = p.tasks.filter(t => t.status === 'done').length;
+  const ip      = p.tasks.filter(t => t.status === 'in-progress').length;
+  const ongoing = p.tasks.filter(t => t.status === 'ongoing').length;
+  const todo    = p.tasks.filter(t => t.status === 'todo').length;
   document.getElementById('proj-stats').innerHTML = [
-    todo  ? `<span class="stat-pill todo">${todo} To Do</span>` : '',
-    ip    ? `<span class="stat-pill inprog">${ip} In Progress</span>` : '',
-    done  ? `<span class="stat-pill done">${done} Done</span>` : '',
+    todo    ? `<span class="stat-pill todo">${todo} To Do</span>` : '',
+    ip      ? `<span class="stat-pill inprog">${ip} In Progress</span>` : '',
+    ongoing ? `<span class="stat-pill ongoing">${ongoing} Ongoing</span>` : '',
+    done    ? `<span class="stat-pill done">${done} Done</span>` : '',
     !p.tasks.length ? `<span class="stat-pill">No tasks yet</span>` : ''
   ].filter(Boolean).join('');
 
@@ -721,6 +863,102 @@ document.getElementById('proj-notes').addEventListener('input', e => {
 });
 
 load(); render();
+
+// ── Task Drawer ───────────────────────────────────────────────────────────────
+const STATUS_COLORS = { todo: '#444', 'in-progress': '#f59e0b', ongoing: '#00d4ff', done: '#00ff88' };
+const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', ongoing: 'Ongoing', done: 'Done' };
+let drawerTaskId = null;
+
+function openDrawer(taskId) {
+  const p = proj(); if (!p) return;
+  const task = p.tasks.find(t => t.id === taskId); if (!task) return;
+  drawerTaskId = taskId;
+
+  document.getElementById('drawer-color-bar').style.background = p.color;
+  const titleEl = document.getElementById('drawer-title');
+  titleEl.textContent = task.title;
+
+  updateDrawerMeta(task);
+
+  const notesEl = document.getElementById('drawer-notes');
+  notesEl.innerHTML = task.notes || '';
+
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('task-drawer').classList.add('open');
+  setTimeout(() => notesEl.focus(), 250);
+}
+
+function updateDrawerMeta(task) {
+  const dot = document.getElementById('drawer-status-dot');
+  const label = document.getElementById('drawer-status-label');
+  dot.style.background = STATUS_COLORS[task.status] || '#444';
+  label.textContent = STATUS_LABELS[task.status] || task.status;
+
+  const dueBtn = document.getElementById('drawer-due-btn');
+  const dueLabel = document.getElementById('drawer-due-label');
+  const dateInput = document.getElementById('drawer-date-input');
+  dateInput.value = task.dueDate || '';
+  const ov = isOverdue(task.dueDate, task.status);
+  dueBtn.className = 'drawer-due-btn' + (ov ? ' overdue' : '');
+  dueLabel.textContent = task.dueDate ? fmtDate(task.dueDate) : '+ Add Date';
+}
+
+function closeDrawer() {
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.getElementById('task-drawer').classList.remove('open');
+  drawerTaskId = null;
+}
+
+function getDrawerTask() {
+  const p = proj(); if (!p || !drawerTaskId) return null;
+  return p.tasks.find(t => t.id === drawerTaskId) || null;
+}
+
+document.getElementById('drawer-overlay').addEventListener('click', closeDrawer);
+document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+
+document.getElementById('drawer-title').addEventListener('blur', () => {
+  const t = getDrawerTask(); if (!t) return;
+  const val = document.getElementById('drawer-title').textContent.trim();
+  t.title = val || 'Untitled';
+  save(); renderMain();
+});
+
+document.getElementById('drawer-status-btn').addEventListener('click', () => {
+  const t = getDrawerTask(); if (!t) return;
+  t.status = SN[t.status];
+  updateDrawerMeta(t);
+  save(); renderMain();
+});
+
+document.getElementById('drawer-date-input').addEventListener('change', e => {
+  const t = getDrawerTask(); if (!t) return;
+  t.dueDate = e.target.value;
+  updateDrawerMeta(t);
+  save(); renderMain();
+});
+
+document.getElementById('drawer-notes').addEventListener('input', () => {
+  const t = getDrawerTask(); if (!t) return;
+  t.notes = document.getElementById('drawer-notes').innerHTML;
+  save();
+});
+
+document.getElementById('drawer-toolbar').addEventListener('click', e => {
+  const btn = e.target.closest('.tb-btn'); if (!btn) return;
+  e.preventDefault();
+  document.getElementById('drawer-notes').focus();
+  document.execCommand(btn.dataset.cmd, false, null);
+  document.getElementById('drawer-notes').dispatchEvent(new Event('input'));
+});
+
+document.getElementById('content').addEventListener('click', e => {
+  const card = e.target.closest('.task-card');
+  if (!card) return;
+  const ignore = e.target.closest('.del-btn, .status-circle, .due, input[type=date], textarea');
+  if (ignore) return;
+  openDrawer(card.dataset.tid);
+}, true);
 </script>
 </body>
 </html>
