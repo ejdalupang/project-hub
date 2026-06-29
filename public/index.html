@@ -358,15 +358,20 @@ a.link-name:hover { text-decoration: underline; }
 .link-row:hover .link-del { opacity: 1; }
 .link-del:hover { color: var(--danger); }
 .link-url-input {
-  width: 100%; background: none; border: none; border-bottom: 1px solid #222;
-  outline: none; color: var(--muted); font-family: inherit; font-size: 11px;
-  padding: 4px 2px; margin-top: 4px; transition: border-color 0.1s;
-  display: none;
+  width: 100%; background: none; border: none; border-bottom: 1px solid #333;
+  outline: none; color: #aaa; font-family: inherit; font-size: 11px;
+  padding: 4px 2px; margin-top: 6px; display: none;
 }
-.link-row:hover .link-url-input,
-.link-url-input:focus { display: block; }
+.link-url-input.visible { display: block; }
 .link-url-input::placeholder { color: #333; }
-.link-url-input:focus { border-color: #444; color: #aaa; }
+.link-url-input:focus { border-color: #555; }
+.link-edit-btn {
+  opacity: 0; background: none; border: none; color: #555; cursor: pointer;
+  font-size: 11px; padding: 2px 5px; border-radius: 5px; transition: all 0.1s;
+  flex-shrink: 0;
+}
+.link-row:hover .link-edit-btn { opacity: 1; }
+.link-edit-btn:hover { color: #aaa; }
 .add-link-btn {
   background: none; border: 1px dashed var(--border); color: var(--muted);
   font-size: 11px; padding: 6px 14px; border-radius: 10px; cursor: pointer;
@@ -827,10 +832,11 @@ function linksSection(p) {
             ? `<a class="link-name" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`
             : `<span class="link-name" contenteditable="true" data-a="link-name" spellcheck="false">${esc(l.label)}</span>`
           }
+          <button class="link-edit-btn" data-a="toggle-url" title="Edit URL">✎</button>
           ${l.url ? `<a class="link-go" href="${esc(l.url)}" target="_blank" rel="noopener">↗</a>` : ''}
           <button class="link-del" data-a="del-link">✕</button>
         </div>
-        <input class="link-url-input" type="url" placeholder="Paste URL…" value="${esc(l.url || '')}" data-a="link-url">
+        <input class="link-url-input${!l.url ? ' visible' : ''}" type="url" placeholder="Paste URL…" value="${esc(l.url || '')}" data-a="link-url">
       </div>
     `).join('')}
   </div>`;
@@ -1054,6 +1060,10 @@ document.getElementById('content').addEventListener('click', e => {
   }
   if (a === 'add-link') { p.links.push({ id: uid(), label: 'New link', url: '' }); save(); renderMain(); setTimeout(() => { const els = document.querySelectorAll('.link-name'); if (els.length) { els[els.length-1].focus(); document.execCommand('selectAll'); } }, 40); }
   if (a === 'del-link') { const r = e.target.closest('[data-lid]'); if (r) { p.links = p.links.filter(l => l.id !== r.dataset.lid); save(); renderMain(); } }
+  if (a === 'toggle-url') {
+    const inp = e.target.closest('.link-row')?.querySelector('.link-url-input');
+    if (inp) { inp.classList.toggle('visible'); if (inp.classList.contains('visible')) inp.focus(); }
+  }
 });
 
 
