@@ -553,6 +553,31 @@ a.link-name:hover { text-decoration: underline; }
 .note-body ul, .note-body ol { padding-left: 20px; margin: 4px 0; }
 .note-body li { margin: 2px 0; }
 .note-body p { margin: 0; min-height: 1.7em; }
+.note-done-btn {
+  margin: 6px 14px 12px auto; display: block;
+  background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 8px;
+  color: #888; font-family: inherit; font-size: 11px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 5px 14px; cursor: pointer; transition: all 0.1s;
+}
+.note-done-btn:hover { background: #222; color: var(--text); }
+.note-view-body {
+  color: #aaa; font-size: 13.5px; line-height: 1.7; padding: 6px 14px 14px;
+}
+.note-view-body:empty { display: none; }
+.note-view-body ul, .note-view-body ol { padding-left: 20px; margin: 4px 0; }
+.note-view-body li { margin: 2px 0; }
+.note-view-body p { margin: 0; min-height: 1.7em; }
+.note-edit-btn {
+  background: none; border: none; color: #444; cursor: pointer; font-size: 11px;
+  padding: 3px 5px; border-radius: 5px; transition: color 0.1s; flex-shrink: 0;
+}
+.note-edit-btn:hover { color: #aaa; }
+.note-entry.viewing .note-toolbar,
+.note-entry.viewing .note-body,
+.note-entry.viewing .note-done-btn { display: none; }
+.note-entry.editing .note-view-body,
+.note-entry.editing .note-edit-btn { display: none; }
 </style>
 </head>
 <body>
@@ -1114,14 +1139,19 @@ function getModalTask() {
   return p.tasks.find(t => t.id === modalTaskId) || null;
 }
 
+const editingNotes = new Set();
+
 function renderNotesList() {
   const t = getModalTask(); if (!t) return;
   t.notes = migrateNotes(t.notes);
   const list = document.getElementById('modal-notes-list');
-  list.innerHTML = t.notes.map((n, i) => `
-    <div class="note-entry" data-nid="${n.id}">
+  list.innerHTML = t.notes.map((n, i) => {
+    const editing = editingNotes.has(n.id);
+    return `
+    <div class="note-entry ${editing ? 'editing' : 'viewing'}" data-nid="${n.id}">
       <div class="note-entry-header">
         <input class="note-entry-title" type="text" placeholder="Note title…" value="${esc(n.title)}" data-nidx="${i}">
+        <button class="note-edit-btn" data-nedit="${n.id}" title="Edit">✎</button>
         <button class="note-del-btn" data-ndel="${n.id}">✕</button>
       </div>
       <div class="note-toolbar">
@@ -1135,8 +1165,10 @@ function renderNotesList() {
         <button class="tb-btn" data-ncmd="italic" data-nid="${n.id}"><i>I</i></button>
       </div>
       <div class="note-body" contenteditable="true" spellcheck="true" data-nbody="${n.id}">${n.body || ''}</div>
-    </div>
-  `).join('');
+      <div class="note-view-body">${n.body || ''}</div>
+      <button class="note-done-btn" data-ndone="${n.id}">Done</button>
+    </div>`;
+  }).join('');
 }
 
 function openModal(taskId) {
@@ -1216,7 +1248,9 @@ document.getElementById('modal-date-input').addEventListener('change', e => {
 document.getElementById('modal-add-note-btn').addEventListener('click', () => {
   const t = getModalTask(); if (!t) return;
   t.notes = migrateNotes(t.notes);
-  t.notes.push({ id: uid(), title: '', body: '' });
+  const newNote = { id: uid(), title: '', body: '' };
+  editingNotes.add(newNote.id);
+  t.notes.push(newNote);
   save(); renderNotesList();
   setTimeout(() => {
     const entries = document.querySelectorAll('.note-entry');
@@ -1243,8 +1277,24 @@ document.getElementById('modal-notes-list').addEventListener('click', e => {
   const delBtn = e.target.closest('[data-ndel]');
   if (delBtn) {
     const t = getModalTask(); if (!t) return;
+    editingNotes.delete(delBtn.dataset.ndel);
     t.notes = t.notes.filter(n => n.id !== delBtn.dataset.ndel);
     save(); renderNotesList(); return;
+  }
+  const doneBtn = e.target.closest('[data-ndone]');
+  if (doneBtn) {
+    editingNotes.delete(doneBtn.dataset.ndone);
+    renderNotesList(); return;
+  }
+  const editBtn = e.target.closest('[data-nedit]');
+  if (editBtn) {
+    editingNotes.add(editBtn.dataset.nedit);
+    renderNotesList();
+    setTimeout(() => {
+      const entry = document.querySelector(`.note-entry[data-nid="${editBtn.dataset.nedit}"]`);
+      entry?.querySelector('.note-body')?.focus();
+    }, 30);
+    return;
   }
   const toolBtn = e.target.closest('[data-ncmd]');
   if (toolBtn) {

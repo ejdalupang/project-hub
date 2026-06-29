@@ -1,0 +1,84 @@
+{
+  "projects": [
+    {
+      "id": "p1",
+      "name": "Building Blocks Sprint",
+      "color": "#6366f1",
+      "links": [
+        { "id": "l1", "label": "Designers Checklist", "url": "" }
+      ],
+      "tasks": [
+        { "id": "t1", "title": "Setup Catchup with Jade", "dueDate": "2026-02-02", "status": "done", "notes": "" },
+        { "id": "t2", "title": "Prep 3 things to discuss for the meet", "dueDate": "2026-02-03", "status": "done", "notes": "" },
+        { "id": "t3", "title": "Review Sprint 1 Templates", "dueDate": "2026-02-04", "status": "done", "notes": "" },
+        { "id": "t4", "title": "Prep Kick-off Deck", "dueDate": "2026-02-06", "status": "done", "notes": "" },
+        { "id": "t5", "title": "Kick-off Meeting", "dueDate": "2026-02-11", "status": "done", "notes": "" },
+        { "id": "t6", "title": "Create Reviewers and Designer's Checklist", "dueDate": "2026-02-19", "status": "done", "notes": "" }
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "Video Template Auditing (IBEX)",
+      "color": "#f59e0b",
+      "links": [
+        { "id": "l1", "label": "Monday Board Process", "url": "" },
+        { "id": "l2", "label": "Ibex Doc Sync", "url": "" }
+      ],
+      "tasks": [
+        { "id": "t1", "title": "Review & audit video templates", "dueDate": "2026-02-20", "status": "in-progress", "notes": "" },
+        { "id": "t2", "title": "Weekly syncs (Mon–Thu)", "dueDate": "2026-02-09", "status": "done", "notes": "Mon ✓, Tue ✓, Wed (N/A), Thu (N/A), Thu Prep Remit" },
+        { "id": "t3", "title": "Create agenda sheet for Mohid", "dueDate": "2026-02-16", "status": "done", "notes": "" }
+      ]
+    },
+    {
+      "id": "p3",
+      "name": "Identifying Bugs and Resolution",
+      "color": "#ef4444",
+      "links": [],
+      "tasks": []
+    },
+    {
+      "id": "p4",
+      "name": "Day to Day / Misc.",
+      "color": "#10b981",
+      "links": [],
+      "tasks": []
+    },
+    {
+      "id": "p5",
+      "name": "Creator Template Audit Deck",
+      "color": "#8b5cf6",
+      "links": [],
+      "tasks": []
+    },
+    {
+      "id": "p6",
+      "name": "CVA Talking Heads",
+      "color": "#06b6d4",
+      "links": [
+        { "id": "l1", "label": "CVA Strat, Briefs, and Everything", "url": "" },
+        { "id": "l2", "label": "Canvagram IOs (Safari)", "url": "" },
+        { "id": "l3", "label": "Annotation Tool", "url": "" }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "p7",
+      "name": "Hackathon '26: Design Consistency Reviewer",
+      "color": "#f97316",
+      "links": [],
+      "tasks": []
+    },
+    {
+      "id": "p8",
+      "name": "UGC Social Media Templates",
+      "color": "#ec4899",
+      "links": [
+        { "id": "l1", "label": "Visual Review Queue Tutorial", "url": "" }
+      ],
+      "tasks": [
+        { "id": "t1", "title": "Visual Review For Social UGC", "dueDate": "2026-06-11", "status": "in-progress", "notes": "" }
+      ]
+    }
+  ]
+}
