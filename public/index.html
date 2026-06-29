@@ -220,7 +220,15 @@ body {
   content: 'TASK NAME…'; opacity: 0.35;
 }
 
-.card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+.card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; gap: 6px; }
+.card-note-count {
+  font-size: 10px; font-weight: 700; color: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.1); padding: 2px 7px; border-radius: 6px;
+  letter-spacing: 0.3px; white-space: nowrap;
+}
+.task-card[draggable="true"] { cursor: grab; }
+.task-card[draggable="true"]:active { cursor: grabbing; }
+.task-card.dragging { opacity: 0.4; transform: scale(0.97); }
 .due {
   font-size: 11px; font-weight: 700; color: rgba(0,0,0,0.45);
   cursor: pointer; padding: 3px 7px; border-radius: 6px;
@@ -245,7 +253,7 @@ body {
 
 /* ── Kanban ── */
 #kanban-view { display: flex; gap: 10px; align-items: flex-start; }
-.k-col { flex: 1; min-width: 0; }
+.k-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .k-col-head {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 10px; padding: 0 2px;
@@ -259,6 +267,20 @@ body {
   padding: 2px 7px; border-radius: 10px; font-weight: 700;
   border: 1px solid var(--border);
 }
+.k-cards {
+  flex: 1; min-height: 80px; border-radius: 12px;
+  transition: background 0.15s, outline 0.15s;
+}
+.k-cards.drag-over {
+  background: rgba(255,255,255,0.04); outline: 2px dashed #333;
+}
+.k-add-btn {
+  width: 100%; margin-top: 6px; background: none; border: 1px dashed #2a2a2a;
+  border-radius: 10px; color: #444; cursor: pointer; font-family: inherit;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 8px; transition: all 0.15s;
+}
+.k-add-btn:hover { border-color: #444; color: var(--muted); background: #161616; }
 .k-cards { display: flex; flex-direction: column; gap: 8px; }
 .k-empty {
   border: 1px dashed var(--border); border-radius: var(--r);
@@ -652,18 +674,26 @@ function dueEl(task) {
   </span>`;
 }
 
-function cardHtml(task, slim = false) {
+function noteCount(task) {
+  const notes = Array.isArray(task.notes) ? task.notes : (task.notes ? [task.notes] : []);
+  return notes.filter(n => (typeof n === 'object' ? n.body || n.title : n)).length;
+}
+
+function cardHtml(task, draggable = false) {
   const p = proj();
   const color = p?.color || '#e8ff00';
   const isDone = task.status === 'done';
-  return `<div class="task-card${isDone ? ' is-done' : ''}" data-tid="${task.id}" style="background:${color}">
+  const nc = noteCount(task);
+  return `<div class="task-card${isDone ? ' is-done' : ''}" data-tid="${task.id}" style="background:${color}" ${draggable ? 'draggable="true"' : ''}>
     <div class="card-top">
       <button class="status-circle ${task.status}" data-a="status">${statusIcon(task.status)}</button>
     </div>
     <button class="del-btn" data-a="del-task">✕</button>
     <div class="task-title" contenteditable="true" data-a="title" spellcheck="false">${esc(task.title)}</div>
-    <textarea class="task-notes" placeholder="Add notes…" data-a="notes" rows="1">${esc(task.notes || '')}</textarea>
-    <div class="card-bottom">${dueEl(task)}</div>
+    <div class="card-bottom">
+      ${dueEl(task)}
+      ${nc ? `<span class="card-note-count">◈ ${nc}</span>` : ''}
+    </div>
   </div>`;
 }
 
@@ -682,15 +712,16 @@ function kanbanView(p) {
   ];
   return `<div id="kanban-view">${cols.map(col => {
     const tasks = p.tasks.filter(t => t.status === col.key);
-    return `<div class="k-col">
+    return `<div class="k-col" data-col="${col.key}">
       <div class="k-col-head">
         <span class="k-col-title">${col.label}</span>
         <span class="k-count">${tasks.length}</span>
       </div>
-      <div class="k-cards">${tasks.length
+      <div class="k-cards" data-col="${col.key}">${tasks.length
         ? tasks.map(t => cardHtml(t, true)).join('')
-        : `<div class="k-empty">Empty</div>`
+        : `<div class="k-empty">Drop here</div>`
       }</div>
+      <button class="k-add-btn" data-a="k-add-task" data-status="${col.key}">＋ Add task</button>
     </div>`;
   }).join('')}</div>`;
 }
@@ -739,6 +770,43 @@ function linksSection(p) {
 }
 
 function render() { renderSidebar(); renderMain(); }
+
+function initKanbanDnd() {
+  if (S.view !== 'kanban') return;
+  let dragId = null;
+
+  document.querySelectorAll('.task-card[draggable]').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragId = card.dataset.tid;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.k-cards').forEach(c => c.classList.remove('drag-over'));
+    });
+  });
+
+  document.querySelectorAll('.k-cards').forEach(col => {
+    col.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', e => {
+      if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+    });
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!dragId) return;
+      const p = proj(); if (!p) return;
+      const task = p.tasks.find(t => t.id === dragId);
+      if (task) { task.status = col.dataset.col; save(); renderMain(); }
+      dragId = null;
+    });
+  });
+}
 
 function renderSidebar() {
   document.getElementById('projects-list').innerHTML = S.projects.map(p => {
@@ -804,6 +872,7 @@ function renderMain() {
   if (S.view === 'timeline') html = timelineView(p);
   html += linksSection(p);
   content.innerHTML = html;
+  initKanbanDnd();
   content.querySelectorAll('textarea').forEach(ta => {
     ta.style.height = ta.scrollHeight + 'px';
     ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; });
@@ -854,6 +923,13 @@ document.getElementById('content').addEventListener('click', e => {
   if (a === 'status') { const t = getTask(e.target); if (t) { t.status = SN[t.status]; save(); renderMain(); } }
   if (a === 'open-date') { const inp = e.target.closest('.due')?.querySelector('input[type=date]'); if (inp) { inp.style.pointerEvents='auto'; inp.showPicker?.() || inp.click(); } }
   if (a === 'del-task') { const c = e.target.closest('[data-tid]'); if (c) { p.tasks = p.tasks.filter(t => t.id !== c.dataset.tid); save(); renderMain(); } }
+  if (a === 'k-add-task') {
+    const status = e.target.dataset.status || 'todo';
+    const task = { id: uid(), title: '', dueDate: '', status, notes: [] };
+    p.tasks.push(task);
+    save(); renderMain();
+    setTimeout(() => document.querySelector(`[data-tid="${task.id}"] .task-title`)?.focus(), 40);
+  }
   if (a === 'add-link') { p.links.push({ id: uid(), label: 'New link', url: '' }); save(); renderMain(); setTimeout(() => { const els = document.querySelectorAll('.link-name'); if (els.length) { els[els.length-1].focus(); document.execCommand('selectAll'); } }, 40); }
   if (a === 'del-link') { const r = e.target.closest('[data-lid]'); if (r) { p.links = p.links.filter(l => l.id !== r.dataset.lid); save(); renderMain(); } }
 });
