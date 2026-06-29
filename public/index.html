@@ -332,24 +332,38 @@ body {
   text-transform: uppercase; letter-spacing: 1.5px;
 }
 .link-row {
-  display: flex; align-items: center; gap: 10px;
   padding: 8px 10px; border-radius: 10px; transition: background 0.1s;
 }
 .link-row:hover { background: var(--surface); }
-.link-row:hover .del-btn { opacity: 1; }
+.link-row-top {
+  display: flex; align-items: center; gap: 8px;
+}
 .link-name {
   font-size: 13px; color: #e8ff00; outline: none; flex: 1;
-  font-weight: 700;
+  font-weight: 700; text-decoration: none;
 }
-.link-name:focus { border-bottom: 1px solid #e8ff00; }
-.link-url { font-size: 11.5px; color: var(--muted); outline: none; flex: 2; }
-.link-url:empty::before { content: 'Paste URL…'; color: var(--muted2); }
+a.link-name:hover { text-decoration: underline; }
+.link-name[contenteditable]:focus { border-bottom: 1px solid #e8ff0055; }
 .link-go {
-  font-size: 11px; color: #e8ff00; text-decoration: none;
-  padding: 3px 7px; border-radius: 6px; opacity: 0;
-  transition: opacity 0.1s; background: #e8ff0015; flex-shrink: 0;
+  font-size: 12px; color: #e8ff00; text-decoration: none;
+  padding: 2px 6px; border-radius: 6px; opacity: 0; flex-shrink: 0;
+  transition: opacity 0.1s; background: #e8ff0015;
 }
 .link-row:hover .link-go { opacity: 1; }
+.link-del {
+  opacity: 0; background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 11px; padding: 3px 5px; border-radius: 4px;
+  transition: all 0.1s; flex-shrink: 0;
+}
+.link-row:hover .link-del { opacity: 1; }
+.link-del:hover { color: var(--danger); }
+.link-url-input {
+  width: 100%; background: none; border: none; border-bottom: 1px solid #222;
+  outline: none; color: var(--muted); font-family: inherit; font-size: 11px;
+  padding: 4px 2px; margin-top: 4px; transition: border-color 0.1s;
+}
+.link-url-input::placeholder { color: #333; }
+.link-url-input:focus { border-color: #444; color: #aaa; }
 .add-link-btn {
   background: none; border: 1px dashed var(--border); color: var(--muted);
   font-size: 11px; padding: 6px 14px; border-radius: 10px; cursor: pointer;
@@ -358,14 +372,6 @@ body {
   transition: all 0.1s;
 }
 .add-link-btn:hover { border-color: #444; color: #888; background: var(--surface); }
-/* inline del for links */
-.link-del {
-  opacity: 0; background: none; border: none; color: var(--muted);
-  cursor: pointer; font-size: 11px; padding: 3px 5px; border-radius: 4px;
-  transition: all 0.1s; flex-shrink: 0;
-}
-.link-row:hover .link-del { opacity: 1; }
-.link-del:hover { color: var(--danger); }
 
 /* ── Empty ── */
 .empty-state {
@@ -813,11 +819,15 @@ function linksSection(p) {
     </div>
     ${p.links.map(l => `
       <div class="link-row" data-lid="${l.id}">
-        <span style="font-size:14px">🔗</span>
-        <span class="link-name" contenteditable="true" data-a="link-name" spellcheck="false">${esc(l.label)}</span>
-        <span class="link-url" contenteditable="true" data-a="link-url" spellcheck="false">${esc(l.url || '')}</span>
-        ${l.url ? `<a class="link-go" href="${esc(l.url)}" target="_blank" rel="noopener">↗</a>` : '<span></span>'}
-        <button class="link-del" data-a="del-link">✕</button>
+        <div class="link-row-top">
+          ${l.url
+            ? `<a class="link-name" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`
+            : `<span class="link-name" contenteditable="true" data-a="link-name" spellcheck="false">${esc(l.label)}</span>`
+          }
+          ${l.url ? `<a class="link-go" href="${esc(l.url)}" target="_blank" rel="noopener">↗</a>` : ''}
+          <button class="link-del" data-a="del-link">✕</button>
+        </div>
+        <input class="link-url-input" type="url" placeholder="Paste URL…" value="${esc(l.url || '')}" data-a="link-url">
       </div>
     `).join('')}
   </div>`;
@@ -1044,13 +1054,21 @@ document.getElementById('content').addEventListener('click', e => {
 });
 
 
+document.getElementById('content').addEventListener('change', e => {
+  const p = proj(); if (!p) return;
+  if (e.target.dataset.a === 'link-url') {
+    const l = getLink(e.target); if (!l) return;
+    l.url = e.target.value.trim();
+    save(); renderMain();
+  }
+});
+
 document.getElementById('content').addEventListener('blur', e => {
   const p = proj(); if (!p) return;
   const a = e.target.dataset.a;
   if (a === 'title')     { const t = getTask(e.target); if (t) { t.title = e.target.textContent.trim() || 'Untitled'; save(); } }
   if (a === 'notes')     { const t = getTask(e.target); if (t) { t.notes = e.target.value; save(); } }
   if (a === 'link-name') { const l = getLink(e.target); if (l) { l.label = e.target.textContent.trim() || 'Link'; save(); } }
-  if (a === 'link-url')  { const l = getLink(e.target); if (l) { l.url = e.target.textContent.trim(); save(); renderMain(); } }
 }, true);
 
 document.getElementById('proj-notes').addEventListener('input', e => {
