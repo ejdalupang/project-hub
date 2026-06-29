@@ -64,9 +64,11 @@ body {
 .proj-item {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 10px; cursor: pointer; border-radius: 12px;
-  transition: background 0.1s; user-select: none; margin-bottom: 2px;
+  transition: background 0.1s, opacity 0.1s; user-select: none; margin-bottom: 2px;
   position: relative;
 }
+.proj-item.dragging { opacity: 0.35; }
+.proj-item.drag-over { background: #1e1e1e; outline: 1px dashed #333; }
 .proj-item:hover { background: var(--surface); }
 .proj-item.active { background: var(--surface); }
 .proj-neon-dot {
@@ -822,6 +824,38 @@ function linksSection(p) {
 
 function render() { renderSidebar(); renderMain(); }
 
+function initSidebarDnd() {
+  let dragId = null;
+  document.querySelectorAll('.proj-item[draggable]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      dragId = el.dataset.pid;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      document.querySelectorAll('.proj-item').forEach(i => i.classList.remove('drag-over'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (el.dataset.pid !== dragId) el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      if (!dragId || el.dataset.pid === dragId) return;
+      const from = S.projects.findIndex(p => p.id === dragId);
+      const to   = S.projects.findIndex(p => p.id === el.dataset.pid);
+      if (from < 0 || to < 0) return;
+      const [moved] = S.projects.splice(from, 1);
+      S.projects.splice(to, 0, moved);
+      save(); renderSidebar(); initSidebarDnd();
+      dragId = null;
+    });
+  });
+}
+
 function initKanbanDnd() {
   if (S.view !== 'kanban') return;
   let dragId = null;
@@ -864,7 +898,7 @@ function renderSidebar() {
     const done = p.tasks.filter(t => t.status === 'done').length;
     const total = p.tasks.length;
     const pct = total ? Math.round((done / total) * 100) : 0;
-    return `<div class="proj-item${p.id === S.activeId ? ' active' : ''}" data-pid="${p.id}">
+    return `<div class="proj-item${p.id === S.activeId ? ' active' : ''}" data-pid="${p.id}" draggable="true">
       <div class="proj-neon-dot" style="background:${p.color}"></div>
       <div class="proj-info">
         <div class="proj-name">${esc(p.name)}</div>
@@ -878,6 +912,7 @@ function renderSidebar() {
       <button class="proj-del" data-a="del-proj" data-pid="${p.id}">✕</button>
     </div>`;
   }).join('');
+  initSidebarDnd();
 }
 
 function renderMain() {
