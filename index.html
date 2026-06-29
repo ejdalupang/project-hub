@@ -68,7 +68,8 @@ body {
   position: relative;
 }
 .proj-item.dragging { opacity: 0.35; }
-.proj-item.drag-over { background: #1e1e1e; outline: 1px dashed #333; }
+.proj-item.drop-before { box-shadow: 0 -2px 0 0 #e8ff00; }
+.proj-item.drop-after  { box-shadow: 0  2px 0 0 #e8ff00; }
 .proj-item:hover { background: var(--surface); }
 .proj-item.active { background: var(--surface); }
 .proj-neon-dot {
@@ -826,32 +827,55 @@ function render() { renderSidebar(); renderMain(); }
 
 function initSidebarDnd() {
   let dragId = null;
+
+  function clearIndicators() {
+    document.querySelectorAll('.proj-item').forEach(i => {
+      i.classList.remove('drop-before', 'drop-after');
+    });
+  }
+
+  function getPosition(el, clientY) {
+    const rect = el.getBoundingClientRect();
+    return clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+  }
+
   document.querySelectorAll('.proj-item[draggable]').forEach(el => {
     el.addEventListener('dragstart', e => {
       dragId = el.dataset.pid;
-      el.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => el.classList.add('dragging'), 0);
     });
+
     el.addEventListener('dragend', () => {
       el.classList.remove('dragging');
-      document.querySelectorAll('.proj-item').forEach(i => i.classList.remove('drag-over'));
+      clearIndicators();
+      dragId = null;
     });
+
     el.addEventListener('dragover', e => {
       e.preventDefault();
-      if (el.dataset.pid !== dragId) el.classList.add('drag-over');
+      if (el.dataset.pid === dragId) return;
+      clearIndicators();
+      const pos = getPosition(el, e.clientY);
+      el.classList.add(pos === 'before' ? 'drop-before' : 'drop-after');
     });
-    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) clearIndicators();
+    });
+
     el.addEventListener('drop', e => {
       e.preventDefault();
-      el.classList.remove('drag-over');
-      if (!dragId || el.dataset.pid === dragId) return;
+      if (!dragId || el.dataset.pid === dragId) { clearIndicators(); return; }
+      const pos = getPosition(el, e.clientY);
+      clearIndicators();
       const from = S.projects.findIndex(p => p.id === dragId);
-      const to   = S.projects.findIndex(p => p.id === el.dataset.pid);
+      let to = S.projects.findIndex(p => p.id === el.dataset.pid);
       if (from < 0 || to < 0) return;
       const [moved] = S.projects.splice(from, 1);
-      S.projects.splice(to, 0, moved);
-      save(); renderSidebar(); initSidebarDnd();
-      dragId = null;
+      to = S.projects.findIndex(p => p.id === el.dataset.pid);
+      S.projects.splice(pos === 'after' ? to + 1 : to, 0, moved);
+      save(); renderSidebar();
     });
   });
 }
