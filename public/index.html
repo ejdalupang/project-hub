@@ -454,6 +454,14 @@ body {
 .date-range-field input[type="date"].has-date { color: #ccc; border-color: #3a3a3a; }
 .date-range-field input[type="date"].overdue { color: var(--danger); border-color: #ff2d6b44; }
 .date-range-arrow { color: #444; font-size: 14px; margin-top: 14px; }
+#ongoing-toggle {
+  background: none; border: 1px dashed #2a2a2a; border-radius: 8px;
+  color: #444; font-family: inherit; font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px;
+  cursor: pointer; margin-top: 4px; transition: all 0.1s; width: 100%;
+}
+#ongoing-toggle:hover { border-color: #00d4ff55; color: #00d4ff; }
+#ongoing-toggle.active { border-color: #00d4ff; color: #00d4ff; background: #00d4ff11; }
 .date-popover-row {
   display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;
 }
@@ -601,6 +609,7 @@ body {
         <div class="date-range-field">
           <label>End</label>
           <input type="date" id="modal-date-input">
+          <button id="ongoing-toggle">∞ Ongoing</button>
         </div>
       </div>
     </div>
@@ -707,10 +716,11 @@ function statusIcon(status) {
 
 function dueEl(task) {
   const ov = isOverdue(task.dueDate, task.status);
-  const label = task.startDate && task.dueDate
-    ? `${fmtDate(task.startDate)} → ${fmtDate(task.dueDate)}`
+  const end = task.dateOngoing ? 'Ongoing' : (task.dueDate ? fmtDate(task.dueDate) : null);
+  const label = task.startDate && end
+    ? `${fmtDate(task.startDate)} → ${end}`
     : task.startDate ? `${fmtDate(task.startDate)} →`
-    : task.dueDate ? fmtDate(task.dueDate)
+    : end ? end
     : '+ Date';
   return `<span class="due${ov ? ' overdue' : ''}">${label}</span>`;
 }
@@ -1058,10 +1068,13 @@ function updateModalMeta(task) {
   const ov = isOverdue(task.dueDate, task.status);
   const startEl = document.getElementById('modal-start-input');
   const endEl = document.getElementById('modal-date-input');
+  const tog = document.getElementById('ongoing-toggle');
   startEl.value = task.startDate || '';
   startEl.className = task.startDate ? 'has-date' : '';
   endEl.value = task.dueDate || '';
   endEl.className = ov ? 'overdue' : task.dueDate ? 'has-date' : '';
+  endEl.disabled = !!task.dateOngoing;
+  tog.classList.toggle('active', !!task.dateOngoing);
 }
 
 function closeModal() {
@@ -1087,6 +1100,14 @@ document.getElementById('modal-status-btn').addEventListener('click', () => {
   save(); renderMain();
 });
 
+
+document.getElementById('ongoing-toggle').addEventListener('click', () => {
+  const t = getModalTask(); if (!t) return;
+  t.dateOngoing = !t.dateOngoing;
+  if (t.dateOngoing) t.dueDate = '';
+  updateModalMeta(t);
+  save(); renderMain();
+});
 
 document.getElementById('modal-start-input').addEventListener('change', e => {
   const t = getModalTask(); if (!t) return;
