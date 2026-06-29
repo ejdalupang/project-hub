@@ -361,7 +361,10 @@ a.link-name:hover { text-decoration: underline; }
   width: 100%; background: none; border: none; border-bottom: 1px solid #222;
   outline: none; color: var(--muted); font-family: inherit; font-size: 11px;
   padding: 4px 2px; margin-top: 4px; transition: border-color 0.1s;
+  display: none;
 }
+.link-row:hover .link-url-input,
+.link-url-input:focus { display: block; }
 .link-url-input::placeholder { color: #333; }
 .link-url-input:focus { border-color: #444; color: #aaa; }
 .add-link-btn {
