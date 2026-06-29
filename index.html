@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,700;0,800;0,900;1,900&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,700;0,800;0,900;1,900&display=swap');
 
 :root {
   --bg: #0c0c0c;
@@ -395,7 +397,6 @@ body {
   display: flex; flex-direction: column;
   transform: scale(0.96) translateY(8px); opacity: 0;
   transition: transform 0.2s cubic-bezier(.4,0,.2,1), opacity 0.18s;
-  overflow: hidden;
 }
 #modal-overlay.open #task-modal { transform: scale(1) translateY(0); opacity: 1; }
 #modal-header {
@@ -432,16 +433,47 @@ body {
 }
 .modal-status-btn:hover { background: #222; }
 .modal-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.modal-due-btn {
-  display: flex; align-items: center; gap: 6px; background: #1a1a1a;
-  border: 1px solid #2a2a2a; border-radius: 20px; cursor: pointer;
-  padding: 5px 12px; color: var(--muted); font-family: inherit; font-size: 12px;
-  font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transition: background 0.1s;
-  position: relative;
+#modal-date-range {
+  display: flex; align-items: center; gap: 6px;
 }
-.modal-due-btn:hover { background: #222; color: var(--text); }
-.modal-due-btn.overdue { color: var(--danger); }
-.modal-due-btn input[type="date"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.date-range-field {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.date-range-field label {
+  font-size: 9px; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+.date-range-field input[type="date"] {
+  background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px;
+  color: #888; font-family: inherit; font-size: 12px; font-weight: 700;
+  padding: 5px 10px; outline: none; cursor: pointer; transition: all 0.1s;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.date-range-field input[type="date"]:hover { border-color: #444; color: #bbb; }
+.date-range-field input[type="date"]:focus { border-color: #555; color: #ccc; }
+.date-range-field input[type="date"].has-date { color: #ccc; border-color: #3a3a3a; }
+.date-range-field input[type="date"].overdue { color: var(--danger); border-color: #ff2d6b44; }
+.date-range-arrow { color: #444; font-size: 14px; margin-top: 14px; }
+.date-popover-row {
+  display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;
+}
+.date-popover-row:last-child { margin-bottom: 0; }
+.date-popover-label {
+  font-size: 10px; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+.date-popover-input {
+  background: #111; border: 1px solid #2a2a2a; border-radius: 8px;
+  color: #ccc; font-family: inherit; font-size: 13px; font-weight: 600;
+  padding: 7px 10px; width: 100%; outline: none; cursor: pointer;
+  transition: border-color 0.1s;
+}
+.date-popover-input:focus { border-color: #555; }
+.date-popover-divider { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.date-popover-divider::before, .date-popover-divider::after {
+  content: ''; flex: 1; height: 1px; background: #222;
+}
+.date-popover-divider span { font-size: 11px; color: #444; font-weight: 700; }
 #modal-notes-section {
   flex: 1; overflow-y: auto; padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 12px;
 }
@@ -560,10 +592,17 @@ body {
         <span class="modal-status-dot" id="modal-status-dot"></span>
         <span id="modal-status-label"></span>
       </button>
-      <button class="modal-due-btn" id="modal-due-btn">
-        <span id="modal-due-label"></span>
-        <input type="date" id="modal-date-input">
-      </button>
+      <div id="modal-date-range">
+        <div class="date-range-field">
+          <label>Start</label>
+          <input type="date" id="modal-start-input">
+        </div>
+        <div class="date-range-arrow">→</div>
+        <div class="date-range-field">
+          <label>End</label>
+          <input type="date" id="modal-date-input">
+        </div>
+      </div>
     </div>
     <div id="modal-notes-section">
       <div id="modal-notes-header">
@@ -668,10 +707,12 @@ function statusIcon(status) {
 
 function dueEl(task) {
   const ov = isOverdue(task.dueDate, task.status);
-  return `<span class="due${ov ? ' overdue' : ''}" data-a="open-date">
-    ${task.dueDate ? fmtDate(task.dueDate) : '+ Date'}
-    <input type="date" value="${task.dueDate || ''}" data-a="set-date">
-  </span>`;
+  const label = task.startDate && task.dueDate
+    ? `${fmtDate(task.startDate)} → ${fmtDate(task.dueDate)}`
+    : task.startDate ? `${fmtDate(task.startDate)} →`
+    : task.dueDate ? fmtDate(task.dueDate)
+    : '+ Date';
+  return `<span class="due${ov ? ' overdue' : ''}">${label}</span>`;
 }
 
 function noteCount(task) {
@@ -921,7 +962,6 @@ document.getElementById('content').addEventListener('click', e => {
   const p = proj(); if (!p) return;
   const a = e.target.dataset.a || e.target.closest('[data-a]')?.dataset.a;
   if (a === 'status') { const t = getTask(e.target); if (t) { t.status = SN[t.status]; save(); renderMain(); } }
-  if (a === 'open-date') { const inp = e.target.closest('.due')?.querySelector('input[type=date]'); if (inp) { inp.style.pointerEvents='auto'; inp.showPicker?.() || inp.click(); } }
   if (a === 'del-task') { const c = e.target.closest('[data-tid]'); if (c) { p.tasks = p.tasks.filter(t => t.id !== c.dataset.tid); save(); renderMain(); } }
   if (a === 'k-add-task') {
     const status = e.target.dataset.status || 'todo';
@@ -934,9 +974,6 @@ document.getElementById('content').addEventListener('click', e => {
   if (a === 'del-link') { const r = e.target.closest('[data-lid]'); if (r) { p.links = p.links.filter(l => l.id !== r.dataset.lid); save(); renderMain(); } }
 });
 
-document.getElementById('content').addEventListener('change', e => {
-  if (e.target.dataset.a === 'set-date') { const t = getTask(e.target); if (t) { t.dueDate = e.target.value; save(); renderMain(); } }
-});
 
 document.getElementById('content').addEventListener('blur', e => {
   const p = proj(); if (!p) return;
@@ -1019,9 +1056,12 @@ function updateModalMeta(task) {
   document.getElementById('modal-status-dot').style.background = STATUS_COLORS[task.status] || '#444';
   document.getElementById('modal-status-label').textContent = STATUS_LABELS[task.status] || task.status;
   const ov = isOverdue(task.dueDate, task.status);
-  document.getElementById('modal-due-btn').className = 'modal-due-btn' + (ov ? ' overdue' : '');
-  document.getElementById('modal-due-label').textContent = task.dueDate ? fmtDate(task.dueDate) : '+ Add Date';
-  document.getElementById('modal-date-input').value = task.dueDate || '';
+  const startEl = document.getElementById('modal-start-input');
+  const endEl = document.getElementById('modal-date-input');
+  startEl.value = task.startDate || '';
+  startEl.className = task.startDate ? 'has-date' : '';
+  endEl.value = task.dueDate || '';
+  endEl.className = ov ? 'overdue' : task.dueDate ? 'has-date' : '';
 }
 
 function closeModal() {
@@ -1043,6 +1083,14 @@ document.getElementById('modal-title').addEventListener('blur', () => {
 document.getElementById('modal-status-btn').addEventListener('click', () => {
   const t = getModalTask(); if (!t) return;
   t.status = SN[t.status];
+  updateModalMeta(t);
+  save(); renderMain();
+});
+
+
+document.getElementById('modal-start-input').addEventListener('change', e => {
+  const t = getModalTask(); if (!t) return;
+  t.startDate = e.target.value;
   updateModalMeta(t);
   save(); renderMain();
 });
@@ -1099,7 +1147,7 @@ document.getElementById('modal-notes-list').addEventListener('click', e => {
 document.getElementById('content').addEventListener('click', e => {
   const card = e.target.closest('.task-card');
   if (!card) return;
-  if (e.target.closest('.del-btn, .status-circle, .due, input[type=date], textarea')) return;
+  if (e.target.closest('.del-btn, .status-circle')) return;
   openModal(card.dataset.tid);
 }, true);
 </script>
