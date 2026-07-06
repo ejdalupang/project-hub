@@ -987,6 +987,16 @@ function timelineView(p) {
 
 let ganttSelectedIds = null; // null = all selected
 
+function toggleGanttProject(pid) {
+  if (!ganttSelectedIds) ganttSelectedIds = new Set(S.projects.map(p => p.id));
+  if (ganttSelectedIds.has(pid)) {
+    if (ganttSelectedIds.size > 1) ganttSelectedIds.delete(pid);
+  } else {
+    ganttSelectedIds.add(pid);
+  }
+  renderMain();
+}
+
 function ganttView() {
   // always re-sync: add any new projects, remove deleted ones
   if (!ganttSelectedIds) {
@@ -1003,7 +1013,7 @@ function ganttView() {
   const filterBar = `<div id="gantt-filter">
     ${S.projects.map(p => {
       const on = ganttSelectedIds.has(p.id);
-      return `<button class="gantt-filter-chip${on ? ' on' : ''}" data-gpid="${p.id}" style="${on ? `background:${p.color}22;border-color:${p.color};color:${p.color}` : ''}">
+      return `<button class="gantt-filter-chip${on ? ' on' : ''}" data-gpid="${p.id}" onclick="toggleGanttProject('${p.id}')" style="${on ? `background:${p.color}22;border-color:${p.color};color:${p.color}` : ''}">
         <span class="gantt-chip-dot" style="background:${on ? p.color : '#444'}"></span>
         ${esc(p.name)}
       </button>`;
