@@ -1383,6 +1383,7 @@ async function addToCalendar() {
       start: { date: start },
       end: { date: end ? nextDay(end) : nextDay(start) },
       attendees: [{ email: 'ej@canva.com' }],
+      visibility: 'private',
       reminders: { useDefault: true }
     };
 
