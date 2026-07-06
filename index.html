@@ -988,12 +988,14 @@ function timelineView(p) {
 let ganttSelectedIds = null; // null = all selected
 
 function toggleGanttProject(pid) {
+  console.log('toggleGanttProject called', pid, ganttSelectedIds);
   if (!ganttSelectedIds) ganttSelectedIds = new Set(S.projects.map(p => p.id));
   if (ganttSelectedIds.has(pid)) {
     if (ganttSelectedIds.size > 1) ganttSelectedIds.delete(pid);
   } else {
     ganttSelectedIds.add(pid);
   }
+  console.log('after toggle', [...ganttSelectedIds]);
   renderMain();
 }
 
@@ -1002,9 +1004,9 @@ function ganttView() {
   if (!ganttSelectedIds) {
     ganttSelectedIds = new Set(S.projects.map(p => p.id));
   } else {
+    // only remove projects that no longer exist
     const validIds = new Set(S.projects.map(p => p.id));
     ganttSelectedIds.forEach(id => { if (!validIds.has(id)) ganttSelectedIds.delete(id); });
-    validIds.forEach(id => { if (!ganttSelectedIds.has(id)) ganttSelectedIds.add(id); });
   }
 
   const selectedProjects = S.projects.filter(p => ganttSelectedIds.has(p.id));
