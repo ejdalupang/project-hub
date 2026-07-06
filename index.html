@@ -1583,6 +1583,18 @@ document.getElementById('modal-notes-list').addEventListener('click', e => {
 });
 
 document.getElementById('content').addEventListener('click', e => {
+  const chip = e.target.closest('.gantt-filter-chip[data-gpid]');
+  if (chip) {
+    const pid = chip.dataset.gpid;
+    if (ganttSelectedIds && ganttSelectedIds.has(pid)) {
+      if (ganttSelectedIds.size > 1) ganttSelectedIds.delete(pid);
+    } else {
+      if (!ganttSelectedIds) ganttSelectedIds = new Set(S.projects.map(p => p.id));
+      ganttSelectedIds.add(pid);
+    }
+    renderMain();
+    return;
+  }
   const card = e.target.closest('.task-card');
   if (card) {
     if (e.target.closest('.del-btn, .status-circle')) return;
@@ -1593,17 +1605,6 @@ document.getElementById('content').addEventListener('click', e => {
   if (ganttRow) {
     if (ganttRow.dataset.gprojid) S.activeId = ganttRow.dataset.gprojid;
     openModal(ganttRow.dataset.tid);
-    return;
-  }
-  const chip = e.target.closest('.gantt-filter-chip[data-gpid]');
-  if (chip) {
-    const pid = chip.dataset.gpid;
-    if (ganttSelectedIds.has(pid)) {
-      if (ganttSelectedIds.size > 1) ganttSelectedIds.delete(pid);
-    } else {
-      ganttSelectedIds.add(pid);
-    }
-    renderMain();
     return;
   }
 }, true);
