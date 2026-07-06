@@ -1594,21 +1594,6 @@ document.getElementById('modal-notes-list').addEventListener('click', e => {
   }
 });
 
-document.addEventListener('click', e => {
-  const chip = e.target.closest('.gantt-filter-chip[data-gpid]');
-  if (chip) {
-    const pid = chip.dataset.gpid;
-    if (!ganttSelectedIds) ganttSelectedIds = new Set(S.projects.map(p => p.id));
-    if (ganttSelectedIds.has(pid)) {
-      if (ganttSelectedIds.size > 1) ganttSelectedIds.delete(pid);
-    } else {
-      ganttSelectedIds.add(pid);
-    }
-    renderMain();
-    e.stopPropagation();
-    return;
-  }
-});
 
 document.getElementById('content').addEventListener('click', e => {
   const card = e.target.closest('.task-card');
