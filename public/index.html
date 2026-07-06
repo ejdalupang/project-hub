@@ -58,6 +58,11 @@ body {
   font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
   text-transform: uppercase; color: var(--muted); flex-shrink: 0;
 }
+.sidebar-group-label {
+  padding: 12px 20px 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted); flex-shrink: 0;
+}
 #projects-list {
   flex: 1; overflow-y: auto; padding: 4px 12px 8px;
 }
@@ -602,6 +607,79 @@ a.link-name:hover { text-decoration: underline; }
 .note-entry.viewing .note-done-btn { display: none; }
 .note-entry.editing .note-view-body,
 .note-entry.editing .note-edit-btn { display: none; }
+
+/* ── Gantt ── */
+#gantt-view { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.gantt-axis {
+  display: flex; position: sticky; top: 0; z-index: 10;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  margin-left: 200px; height: 28px;
+}
+.gantt-axis-tick {
+  position: absolute; display: flex; flex-direction: column; align-items: flex-start;
+  pointer-events: none;
+}
+.gantt-axis-tick-label {
+  font-size: 9px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  padding-top: 8px; white-space: nowrap;
+}
+.gantt-axis-tick-line {
+  width: 1px; background: var(--border); height: 8px; margin-top: 2px;
+}
+.gantt-body { position: relative; }
+.gantt-row {
+  display: flex; align-items: center; min-height: 36px;
+  border-bottom: 1px solid #1a1a1a; cursor: pointer;
+  transition: background 0.1s;
+}
+.gantt-row:hover { background: #111; }
+.gantt-row.is-done { opacity: 0.45; }
+.gantt-row-label {
+  width: 200px; min-width: 200px; padding: 0 12px;
+  font-size: 11.5px; font-weight: 700; color: #888;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex-shrink: 0;
+}
+.gantt-row:hover .gantt-row-label { color: #ccc; }
+.gantt-row-track {
+  flex: 1; position: relative; height: 36px;
+}
+.gantt-bar {
+  position: absolute; top: 7px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; padding: 0 8px; overflow: hidden;
+  min-width: 6px; transition: filter 0.1s;
+}
+.gantt-bar:hover { filter: brightness(1.12); }
+.gantt-bar.overdue { outline: 2px solid #ff2d6b88; }
+.gantt-bar-label {
+  font-size: 10px; font-weight: 800; color: rgba(0,0,0,0.75);
+  text-transform: uppercase; letter-spacing: 0.3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none;
+}
+.gantt-today-line {
+  position: absolute; top: 0; width: 2px; background: #ff2d6b;
+  pointer-events: none; z-index: 5; opacity: 0.8;
+}
+.gantt-today-line::before {
+  content: 'TODAY';
+  position: absolute; top: 4px; left: 4px;
+  font-size: 8px; font-weight: 800; color: #ff2d6b;
+  letter-spacing: 0.5px; white-space: nowrap;
+}
+.gantt-nodate-section { margin-top: 24px; }
+.gantt-nodate-label {
+  font-size: 10px; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px;
+  margin-bottom: 10px; display: flex; align-items: center; gap: 12px;
+}
+.gantt-nodate-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.gantt-wrapper { position: relative; overflow: hidden; }
+.gantt-grid-line {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: #1a1a1a; pointer-events: none;
+}
 </style>
 </head>
 <body>
@@ -633,6 +711,7 @@ a.link-name:hover { text-decoration: underline; }
           <button class="vbtn active" data-view="cards">Cards</button>
           <button class="vbtn" data-view="kanban">Kanban</button>
           <button class="vbtn" data-view="timeline">Timeline</button>
+          <button class="vbtn" data-view="gantt">Gantt</button>
         </div>
         <button id="add-task-btn">＋ Add Task</button>
       </div>
@@ -714,7 +793,7 @@ const NEONS = ['#e8ff00','#b668ff','#00ff88','#ff2d6b','#00d4ff','#ff6b00','#ff9
 const DEFAULT_DATA = {
   projects: [
     {
-      id: 'p1', name: 'Building Blocks Sprint', color: '#e8ff00', notes: '',
+      id: 'p1', name: 'Building Blocks Sprint', color: '#e8ff00', notes: '', category: 'work',
       links: [{ id: 'l1', label: 'Designers Checklist', url: '' }],
       tasks: [
         { id: 't1', title: 'Setup Catchup with Jade', dueDate: '2026-02-02', status: 'done', notes: '' },
@@ -726,7 +805,7 @@ const DEFAULT_DATA = {
       ]
     },
     {
-      id: 'p2', name: 'Video Template Auditing (IBEX)', color: '#b668ff', notes: '',
+      id: 'p2', name: 'Video Template Auditing (IBEX)', color: '#b668ff', notes: '', category: 'work',
       links: [
         { id: 'l1', label: 'Monday Board Process', url: '' },
         { id: 'l2', label: 'Ibex Doc Sync', url: '' }
@@ -737,11 +816,11 @@ const DEFAULT_DATA = {
         { id: 't3', title: 'Create agenda sheet for Mohid', dueDate: '2026-02-16', status: 'done', notes: '' }
       ]
     },
-    { id: 'p3', name: 'Identifying Bugs and Resolution', color: '#ff2d6b', notes: '', links: [], tasks: [] },
-    { id: 'p4', name: 'Day to Day / Misc.', color: '#00ff88', notes: '', links: [], tasks: [] },
-    { id: 'p5', name: 'Creator Template Audit Deck', color: '#00d4ff', notes: '', links: [], tasks: [] },
+    { id: 'p3', name: 'Identifying Bugs and Resolution', color: '#ff2d6b', notes: '', category: 'work', links: [], tasks: [] },
+    { id: 'p4', name: 'Day to Day / Misc.', color: '#00ff88', notes: '', category: 'work', links: [], tasks: [] },
+    { id: 'p5', name: 'Creator Template Audit Deck', color: '#00d4ff', notes: '', category: 'work', links: [], tasks: [] },
     {
-      id: 'p6', name: 'CVA Talking Heads', color: '#ff6b00', notes: '',
+      id: 'p6', name: 'CVA Talking Heads', color: '#ff6b00', notes: '', category: 'work',
       links: [
         { id: 'l1', label: 'CVA Strat, Briefs, and Everything', url: '' },
         { id: 'l2', label: 'Canvagram IOs (Safari)', url: '' },
@@ -749,9 +828,9 @@ const DEFAULT_DATA = {
       ],
       tasks: []
     },
-    { id: 'p7', name: "Hackathon '26: Design Consistency Reviewer", color: '#ff9de2', notes: '', links: [], tasks: [] },
+    { id: 'p7', name: "Hackathon '26: Design Consistency Reviewer", color: '#ff9de2', notes: '', category: 'work', links: [], tasks: [] },
     {
-      id: 'p8', name: 'UGC Social Media Templates', color: '#a8ff3e', notes: '',
+      id: 'p8', name: 'UGC Social Media Templates', color: '#a8ff3e', notes: '', category: 'work',
       links: [{ id: 'l1', label: 'Visual Review Queue Tutorial', url: '' }],
       tasks: [{ id: 't1', title: 'Visual Review For Social UGC', dueDate: '2026-06-11', status: 'in-progress', notes: '' }]
     }
@@ -766,6 +845,8 @@ function load() {
     const stored = localStorage.getItem(STORAGE_KEY);
     S.projects = (stored ? JSON.parse(stored) : DEFAULT_DATA).projects || [];
   } catch { S.projects = DEFAULT_DATA.projects; }
+  // migrate: ensure every project has a category
+  S.projects.forEach(p => { if (!p.category) p.category = 'work'; });
   if (S.projects.length) S.activeId = S.projects[0].id;
 }
 
@@ -885,6 +966,125 @@ function timelineView(p) {
   `).join('')}</div>`;
 }
 
+function ganttView(p) {
+  if (!p.tasks.length)
+    return `<div id="gantt-view"><div class="empty-state"><div class="icon">▬</div><p>No tasks yet</p><small>Hit "+ Add Task" to get started</small></div></div>`;
+
+  const today = new Date(new Date().toDateString());
+  const PADDING_DAYS = 3;
+
+  // split tasks into dated vs undated
+  const datedTasks = p.tasks.filter(t => t.startDate || t.dueDate || t.dateOngoing);
+  const undatedTasks = p.tasks.filter(t => !t.startDate && !t.dueDate && !t.dateOngoing);
+
+  if (!datedTasks.length && undatedTasks.length) {
+    // all undated — just show undated section
+    return `<div id="gantt-view"><div class="gantt-nodate-section">
+      <div class="gantt-nodate-label">No Date</div>
+      ${undatedTasks.map(t => cardHtml(t)).join('')}
+    </div>${linksSection(p)}</div>`;
+  }
+
+  // compute date range
+  let minDate = today, maxDate = new Date(today.getTime() + 14 * 86400000);
+  datedTasks.forEach(t => {
+    if (t.startDate) { const d = new Date(t.startDate + 'T00:00:00'); if (d < minDate) minDate = d; }
+    if (t.dueDate)   { const d = new Date(t.dueDate + 'T00:00:00');   if (d > maxDate) maxDate = d; }
+  });
+  // add padding
+  minDate = new Date(minDate.getTime() - PADDING_DAYS * 86400000);
+  maxDate = new Date(maxDate.getTime() + PADDING_DAYS * 86400000);
+
+  const totalDays = Math.round((maxDate - minDate) / 86400000) + 1;
+
+  function dayOffset(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return Math.round((d - minDate) / 86400000);
+  }
+
+  // build axis ticks — one per week approx
+  const tickInterval = totalDays > 60 ? 14 : totalDays > 30 ? 7 : totalDays > 14 ? 3 : 1;
+  let axisTicks = '';
+  for (let i = 0; i < totalDays; i += tickInterval) {
+    const d = new Date(minDate.getTime() + i * 86400000);
+    const label = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    const pct = (i / totalDays) * 100;
+    axisTicks += `<div class="gantt-axis-tick" style="left:${pct}%">
+      <span class="gantt-axis-tick-label">${label}</span>
+      <div class="gantt-axis-tick-line"></div>
+    </div>`;
+  }
+
+  // today line
+  const todayOffset = Math.round((today - minDate) / 86400000);
+  const todayPct = (todayOffset / totalDays) * 100;
+  let todayLine = '';
+  if (todayOffset >= 0 && todayOffset <= totalDays) {
+    todayLine = `<div class="gantt-today-line" style="left:${todayPct}%;height:100%"></div>`;
+  }
+
+  // grid lines matching ticks
+  let gridLines = '';
+  for (let i = 0; i < totalDays; i += tickInterval) {
+    const pct = (i / totalDays) * 100;
+    gridLines += `<div class="gantt-grid-line" style="left:${pct}%"></div>`;
+  }
+
+  // rows
+  const rows = datedTasks.map(t => {
+    const isDone = t.status === 'done';
+    const ov = isOverdue(t.dueDate, t.status);
+
+    let startOff, endOff;
+    if (t.startDate && t.dueDate) {
+      startOff = dayOffset(t.startDate);
+      endOff = dayOffset(t.dueDate);
+    } else if (t.startDate && t.dateOngoing) {
+      startOff = dayOffset(t.startDate);
+      endOff = totalDays - 1;
+    } else if (t.startDate) {
+      startOff = dayOffset(t.startDate);
+      endOff = startOff; // 1-day
+    } else if (t.dueDate && t.dateOngoing) {
+      startOff = dayOffset(t.dueDate);
+      endOff = totalDays - 1;
+    } else {
+      startOff = dayOffset(t.dueDate);
+      endOff = startOff;
+    }
+
+    const leftPct  = (startOff / totalDays) * 100;
+    const widthPct = Math.max(((endOff - startOff + 1) / totalDays) * 100, 0.5);
+
+    return `<div class="gantt-row${isDone ? ' is-done' : ''}" data-tid="${t.id}">
+      <div class="gantt-row-label" title="${esc(t.title)}">${esc(t.title)}</div>
+      <div class="gantt-row-track">
+        <div class="gantt-bar${ov ? ' overdue' : ''}" style="left:${leftPct}%;width:${widthPct}%;background:${p.color}" title="${esc(t.title)}">
+          <span class="gantt-bar-label">${esc(t.title)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const undatedSection = undatedTasks.length ? `
+    <div class="gantt-nodate-section">
+      <div class="gantt-nodate-label">No Date</div>
+      ${undatedTasks.map(t => cardHtml(t)).join('')}
+    </div>` : '';
+
+  return `<div id="gantt-view">
+    <div style="position:relative">
+      <div class="gantt-axis" style="position:relative;height:28px;margin-left:200px">${axisTicks}</div>
+      <div class="gantt-wrapper gantt-body">
+        ${gridLines}
+        ${todayLine}
+        ${rows}
+      </div>
+    </div>
+    ${undatedSection}
+  </div>`;
+}
+
 function linksSection(p) {
   return `<div class="links-section">
     <div class="links-head">
@@ -912,6 +1112,7 @@ function render() { renderSidebar(); renderMain(); }
 
 function initSidebarDnd() {
   let dragId = null;
+  let dragCategory = null;
 
   function clearIndicators() {
     document.querySelectorAll('.proj-item').forEach(i => {
@@ -927,6 +1128,7 @@ function initSidebarDnd() {
   document.querySelectorAll('.proj-item[draggable]').forEach(el => {
     el.addEventListener('dragstart', e => {
       dragId = el.dataset.pid;
+      dragCategory = el.dataset.category;
       e.dataTransfer.effectAllowed = 'move';
       setTimeout(() => el.classList.add('dragging'), 0);
     });
@@ -934,12 +1136,14 @@ function initSidebarDnd() {
     el.addEventListener('dragend', () => {
       el.classList.remove('dragging');
       clearIndicators();
-      dragId = null;
+      dragId = null; dragCategory = null;
     });
 
     el.addEventListener('dragover', e => {
       e.preventDefault();
       if (el.dataset.pid === dragId) return;
+      // only allow drop within same category
+      if (el.dataset.category !== dragCategory) return;
       clearIndicators();
       const pos = getPosition(el, e.clientY);
       el.classList.add(pos === 'before' ? 'drop-before' : 'drop-after');
@@ -952,6 +1156,7 @@ function initSidebarDnd() {
     el.addEventListener('drop', e => {
       e.preventDefault();
       if (!dragId || el.dataset.pid === dragId) { clearIndicators(); return; }
+      if (el.dataset.category !== dragCategory) { clearIndicators(); return; }
       const pos = getPosition(el, e.clientY);
       clearIndicators();
       const from = S.projects.findIndex(p => p.id === dragId);
@@ -1002,25 +1207,38 @@ function initKanbanDnd() {
   });
 }
 
-function renderSidebar() {
-  document.getElementById('projects-list').innerHTML = S.projects.map(p => {
-    const done = p.tasks.filter(t => t.status === 'done').length;
-    const total = p.tasks.length;
-    const pct = total ? Math.round((done / total) * 100) : 0;
-    return `<div class="proj-item${p.id === S.activeId ? ' active' : ''}" data-pid="${p.id}" draggable="true">
-      <div class="proj-neon-dot" style="background:${p.color}"></div>
-      <div class="proj-info">
-        <div class="proj-name">${esc(p.name)}</div>
-        <div class="proj-prog-row">
-          <div class="proj-prog-track">
-            <div class="proj-prog-fill" style="width:${pct}%;background:${p.color}"></div>
-          </div>
-          <span class="proj-prog-label">${done}/${total}</span>
+function projItemHtml(p) {
+  const done = p.tasks.filter(t => t.status === 'done').length;
+  const total = p.tasks.length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return `<div class="proj-item${p.id === S.activeId ? ' active' : ''}" data-pid="${p.id}" data-category="${p.category || 'work'}" draggable="true">
+    <div class="proj-neon-dot" style="background:${p.color}"></div>
+    <div class="proj-info">
+      <div class="proj-name">${esc(p.name)}</div>
+      <div class="proj-prog-row">
+        <div class="proj-prog-track">
+          <div class="proj-prog-fill" style="width:${pct}%;background:${p.color}"></div>
         </div>
+        <span class="proj-prog-label">${done}/${total}</span>
       </div>
-      <button class="proj-del" data-a="del-proj" data-pid="${p.id}">✕</button>
-    </div>`;
-  }).join('');
+    </div>
+    <button class="proj-del" data-a="del-proj" data-pid="${p.id}">✕</button>
+  </div>`;
+}
+
+function renderSidebar() {
+  const work     = S.projects.filter(p => (p.category || 'work') === 'work');
+  const personal = S.projects.filter(p => p.category === 'personal');
+  let html = '';
+  if (work.length) {
+    html += `<div class="sidebar-group-label">Work</div>`;
+    html += work.map(projItemHtml).join('');
+  }
+  if (personal.length) {
+    html += `<div class="sidebar-group-label">Personal</div>`;
+    html += personal.map(projItemHtml).join('');
+  }
+  document.getElementById('projects-list').innerHTML = html;
   initSidebarDnd();
 }
 
@@ -1065,6 +1283,7 @@ function renderMain() {
   if (S.view === 'cards')    html = cardsView(p);
   if (S.view === 'kanban')   html = kanbanView(p);
   if (S.view === 'timeline') html = timelineView(p);
+  if (S.view === 'gantt')    html = ganttView(p);
   html += linksSection(p);
   content.innerHTML = html;
   initKanbanDnd();
@@ -1094,7 +1313,9 @@ document.getElementById('projects-list').addEventListener('click', e => {
 document.getElementById('add-proj').addEventListener('click', () => {
   const name = prompt('Project name:');
   if (!name?.trim()) return;
-  S.projects.push({ id: uid(), name: name.trim(), color: NEONS[S.projects.length % NEONS.length], links: [], tasks: [] });
+  const isWork = confirm('Is this a Work project?\n\nOK = Work   |   Cancel = Personal');
+  const category = isWork ? 'work' : 'personal';
+  S.projects.push({ id: uid(), name: name.trim(), color: NEONS[S.projects.length % NEONS.length], category, links: [], tasks: [] });
   S.activeId = S.projects[S.projects.length - 1].id;
   save(); render();
 });
@@ -1348,9 +1569,13 @@ document.getElementById('modal-notes-list').addEventListener('click', e => {
 
 document.getElementById('content').addEventListener('click', e => {
   const card = e.target.closest('.task-card');
-  if (!card) return;
-  if (e.target.closest('.del-btn, .status-circle')) return;
-  openModal(card.dataset.tid);
+  if (card) {
+    if (e.target.closest('.del-btn, .status-circle')) return;
+    openModal(card.dataset.tid);
+    return;
+  }
+  const ganttRow = e.target.closest('.gantt-row[data-tid]');
+  if (ganttRow) { openModal(ganttRow.dataset.tid); }
 }, true);
 
 // ── Google Calendar ──
