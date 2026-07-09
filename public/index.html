@@ -719,6 +719,31 @@ a.link-name:hover { text-decoration: underline; }
 }
 .date-range-field input[type="time"]:hover { border-color: #444; color: #bbb; }
 .date-range-field input[type="time"]:focus { border-color: #555; color: #ccc; }
+#cal-time-picker {
+  margin-top: 10px; display: flex; flex-direction: column; gap: 8px;
+}
+#cal-slots-label {
+  font-size: 9px; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+#cal-slots { display: flex; flex-wrap: wrap; gap: 6px; }
+.cal-slot {
+  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+  color: #888; font-family: inherit; font-size: 11px; font-weight: 700;
+  padding: 4px 10px; cursor: pointer; transition: all 0.1s;
+}
+.cal-slot:hover { border-color: #e8ff00; color: #e8ff00; background: #e8ff0010; }
+.cal-slot.selected { border-color: #e8ff00; color: #e8ff00; background: #e8ff0015; }
+#cal-manual-row {
+  display: flex; align-items: flex-end; gap: 6px; flex-wrap: wrap;
+}
+#cal-confirm-btn {
+  background: #e8ff00; color: #0c0c0c; border: none; border-radius: 8px;
+  font-family: inherit; font-size: 11px; font-weight: 800;
+  padding: 6px 14px; cursor: pointer; transition: all 0.1s;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-top: 14px;
+}
+#cal-confirm-btn:hover { filter: brightness(1.1); }
 #cal-btn {
   display: flex; align-items: center; gap: 6px;
   background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
@@ -949,21 +974,26 @@ a.link-name:hover { text-decoration: underline; }
         </div>
       </div>
       </div>
-      <div id="modal-time-row">
-        <div class="date-range-field">
-          <label>Start Time</label>
-          <input type="time" id="modal-start-time">
-        </div>
-        <div class="date-range-arrow">→</div>
-        <div class="date-range-field">
-          <label>End Time</label>
-          <input type="time" id="modal-end-time">
-        </div>
-      </div>
       <button id="cal-btn" title="Add to Google Calendar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         Add to Calendar
       </button>
+      <div id="cal-time-picker" style="display:none">
+        <div id="cal-slots-label">Suggested free slots</div>
+        <div id="cal-slots"></div>
+        <div id="cal-manual-row">
+          <div class="date-range-field">
+            <label>Start Time</label>
+            <input type="time" id="modal-start-time">
+          </div>
+          <div class="date-range-arrow">→</div>
+          <div class="date-range-field">
+            <label>End Time</label>
+            <input type="time" id="modal-end-time">
+          </div>
+          <button id="cal-confirm-btn">Confirm</button>
+        </div>
+      </div>
     </div>
     <div id="modal-notes-section">
       <div id="modal-notes-header">
@@ -1801,14 +1831,63 @@ function gcalSignIn() {
   });
 }
 
-function toGcalDate(dateStr) {
-  return { date: dateStr };
+const TZ = 'Asia/Manila';
+
+function nextDay(d) {
+  const dt = new Date(d + 'T00:00:00');
+  dt.setDate(dt.getDate() + 1);
+  return dt.toISOString().split('T')[0];
+}
+
+function fmtTime(h, m) {
+  const ap = h >= 12 ? 'PM' : 'AM';
+  const hh = h % 12 || 12;
+  return `${hh}:${String(m).padStart(2,'0')} ${ap}`;
+}
+
+async function createCalendarEvent(startDate, endDate, startTime, endTime) {
+  const t = getModalTask(); if (!t) return;
+  const p = proj(); if (!p) return;
+  const token = gcalToken || await gcalSignIn();
+
+  let eventStart, eventEnd;
+  if (startTime) {
+    eventStart = { dateTime: `${startDate}T${startTime}:00`, timeZone: TZ };
+    eventEnd = endTime
+      ? { dateTime: `${endDate}T${endTime}:00`, timeZone: TZ }
+      : { dateTime: `${endDate}T${startTime}:00`, timeZone: TZ };
+  } else {
+    eventStart = { date: startDate };
+    eventEnd = { date: nextDay(endDate) };
+  }
+
+  const event = {
+    summary: t.title || 'Task',
+    description: `Project: ${p.name}\n\nAdded from Project Hub`,
+    start: eventStart, end: eventEnd,
+    attendees: [{ email: 'ej@canva.com' }],
+    colorId: '3', visibility: 'private',
+    reminders: { useDefault: true }
+  };
+
+  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(event)
+  });
+  if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || 'Failed'); }
 }
 
 async function addToCalendar() {
   const t = getModalTask(); if (!t) return;
-  const p = proj(); if (!p) return;
   const btn = document.getElementById('cal-btn');
+  const picker = document.getElementById('cal-time-picker');
+
+  // If picker already open, just toggle it closed
+  if (picker.style.display !== 'none') {
+    picker.style.display = 'none';
+    return;
+  }
 
   if (!t.startDate && !t.dueDate && !t.dateOngoing) {
     alert('Please set at least a start or end date on the task first.');
@@ -1816,71 +1895,102 @@ async function addToCalendar() {
   }
 
   btn.classList.add('loading');
-  btn.textContent = 'Connecting…';
+  btn.textContent = 'Checking calendar…';
 
   try {
     const token = gcalToken || await gcalSignIn();
+    const refDate = t.startDate || t.dueDate;
+    const dayStart = new Date(refDate + 'T00:00:00+08:00');
+    const dayEnd   = new Date(refDate + 'T23:59:59+08:00');
 
-    const startDate = t.startDate || t.dueDate;
-    const endDate = t.dateOngoing ? startDate : (t.dueDate || t.startDate);
-    const startTime = document.getElementById('modal-start-time').value;
-    const endTime = document.getElementById('modal-end-time').value;
-    const TZ = 'Asia/Manila';
-
-    function nextDay(d) {
-      const dt = new Date(d + 'T00:00:00');
-      dt.setDate(dt.getDate() + 1);
-      return dt.toISOString().split('T')[0];
-    }
-
-    let eventStart, eventEnd;
-    if (startTime) {
-      eventStart = { dateTime: `${startDate}T${startTime}:00`, timeZone: TZ };
-      eventEnd = endTime
-        ? { dateTime: `${endDate}T${endTime}:00`, timeZone: TZ }
-        : { dateTime: `${endDate}T${startTime}:00`, timeZone: TZ };
-    } else {
-      eventStart = { date: startDate };
-      eventEnd = { date: nextDay(endDate) };
-    }
-
-    const event = {
-      summary: t.title || 'Task',
-      description: `Project: ${p.name}\n\nAdded from Project Hub`,
-      start: eventStart,
-      end: eventEnd,
-      attendees: [{ email: 'ej@canva.com' }],
-      colorId: '3',
-      visibility: 'private',
-      reminders: { useDefault: true }
-    };
-
-    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
+    // Fetch free/busy for that day
+    const fbRes = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(event)
+      body: JSON.stringify({ timeMin: dayStart.toISOString(), timeMax: dayEnd.toISOString(),
+        items: [{ id: 'primary' }, { id: 'ej@canva.com' }] })
     });
+    const fbData = fbRes.ok ? await fbRes.json() : { calendars: {} };
+    const busy = [
+      ...(fbData.calendars?.primary?.busy || []),
+      ...(fbData.calendars?.['ej@canva.com']?.busy || [])
+    ].map(b => ({ start: new Date(b.start), end: new Date(b.end) }));
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || 'Failed to create event');
+    // Find free 30-min slots between 7am–5pm
+    const slots = [];
+    for (let h = 7; h < 17; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        const s = new Date(refDate + 'T00:00:00+08:00'); s.setHours(h, m, 0, 0);
+        const e = new Date(s); e.setMinutes(e.getMinutes() + 30);
+        if (!busy.some(b => b.start < e && b.end > s)) {
+          slots.push({ h, m });
+          if (slots.length >= 5) break;
+        }
+      }
+      if (slots.length >= 5) break;
     }
 
-    btn.classList.remove('loading');
-    btn.classList.add('success');
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Added to Calendar`;
-    setTimeout(() => {
-      btn.classList.remove('success');
-      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Add to Calendar`;
-    }, 3000);
+    // Render picker
+    const slotsEl = document.getElementById('cal-slots');
+    slotsEl.innerHTML = slots.length
+      ? slots.map(s => `<button class="cal-slot" data-h="${s.h}" data-m="${s.m}">${fmtTime(s.h, s.m)}</button>`).join('')
+      : '<span style="color:#555;font-size:11px">No free slots found</span>';
+
+    document.getElementById('modal-start-time').value = '';
+    document.getElementById('modal-end-time').value = '';
+    picker.style.display = 'flex';
 
   } catch (err) {
     console.error(err);
+    alert('Could not check calendar: ' + (err.message || err));
+  } finally {
     btn.classList.remove('loading');
     btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Add to Calendar`;
-    alert('Could not add to calendar: ' + (err.message || err));
   }
 }
+
+// Slot chip click — fill time inputs
+document.getElementById('cal-slots').addEventListener('click', e => {
+  const slot = e.target.closest('.cal-slot');
+  if (!slot) return;
+  document.querySelectorAll('.cal-slot').forEach(s => s.classList.remove('selected'));
+  slot.classList.add('selected');
+  const h = String(slot.dataset.h).padStart(2,'0');
+  const m = String(slot.dataset.m).padStart(2,'0');
+  const endH = String(parseInt(slot.dataset.h) + (slot.dataset.m === '30' ? 1 : 0)).padStart(2,'0');
+  const endM = slot.dataset.m === '30' ? '00' : '30';
+  document.getElementById('modal-start-time').value = `${h}:${m}`;
+  document.getElementById('modal-end-time').value = `${endH}:${endM}`;
+});
+
+// Confirm button
+document.getElementById('cal-confirm-btn').addEventListener('click', async () => {
+  const t = getModalTask(); if (!t) return;
+  const startDate = t.startDate || t.dueDate;
+  const endDate = t.dateOngoing ? startDate : (t.dueDate || t.startDate);
+  const startTime = document.getElementById('modal-start-time').value;
+  const endTime = document.getElementById('modal-end-time').value;
+  const btn = document.getElementById('cal-confirm-btn');
+
+  btn.textContent = 'Adding…';
+  btn.disabled = true;
+  try {
+    await createCalendarEvent(startDate, endDate, startTime, endTime);
+    document.getElementById('cal-time-picker').style.display = 'none';
+    const calBtn = document.getElementById('cal-btn');
+    calBtn.classList.add('success');
+    calBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Added to Calendar`;
+    setTimeout(() => {
+      calBtn.classList.remove('success');
+      calBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Add to Calendar`;
+    }, 3000);
+  } catch(err) {
+    alert('Could not add to calendar: ' + (err.message || err));
+  } finally {
+    btn.textContent = 'Confirm';
+    btn.disabled = false;
+  }
+});
 
 document.getElementById('cal-btn').addEventListener('click', addToCalendar);
 
