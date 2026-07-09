@@ -690,6 +690,17 @@ a.link-name:hover { text-decoration: underline; }
 }
 #modal-add-note-btn:hover { background: #222; color: var(--text); }
 #modal-notes-list { display: flex; flex-direction: column; gap: 10px; }
+#modal-links-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #1e1e1e; flex-shrink: 0; }
+#modal-links-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+#modal-links-heading { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+#modal-add-link-btn {
+  display: flex; align-items: center; gap: 5px; background: #1a1a1a;
+  border: 1px solid #2a2a2a; border-radius: 10px; cursor: pointer;
+  padding: 5px 12px; color: var(--muted); font-family: inherit; font-size: 11px;
+  font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.1s;
+}
+#modal-add-link-btn:hover { background: #222; color: var(--text); }
+#modal-links-list { display: flex; flex-direction: column; gap: 4px; }
 .note-entry {
   background: #161616; border: 1px solid #222; border-radius: 14px; overflow: hidden;
 }
@@ -1014,6 +1025,13 @@ a.link-name:hover { text-decoration: underline; }
         <button id="modal-add-note-btn">＋ Add Note</button>
       </div>
       <div id="modal-notes-list"></div>
+      <div id="modal-links-section">
+        <div id="modal-links-header">
+          <span id="modal-links-heading">Links</span>
+          <button id="modal-add-link-btn">＋ Add Link</button>
+        </div>
+        <div id="modal-links-list"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1389,10 +1407,7 @@ function linksSection(p) {
     ${p.links.map(l => `
       <div class="link-row" data-lid="${l.id}">
         <div class="link-row-top">
-          ${l.url
-            ? `<a class="link-name" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`
-            : `<span class="link-name" contenteditable="true" data-a="link-name" spellcheck="false">${esc(l.label)}</span>`
-          }
+          <span class="link-name" contenteditable="true" data-a="link-name" spellcheck="false">${esc(l.label)}</span>
           <button class="link-edit-btn" data-a="toggle-url" title="Edit URL">✎</button>
           ${l.url ? `<a class="link-go" href="${esc(l.url)}" target="_blank" rel="noopener">↗</a>` : ''}
           <button class="link-del" data-a="del-link">✕</button>
@@ -1802,6 +1817,23 @@ function renderNotesList() {
   }).join('');
 }
 
+function renderModalLinks() {
+  const t = getModalTask(); if (!t) return;
+  if (!Array.isArray(t.links)) t.links = [];
+  const list = document.getElementById('modal-links-list');
+  list.innerHTML = t.links.map(l => `
+    <div class="link-row" data-tlid="${l.id}">
+      <div class="link-row-top">
+        <span class="link-name" contenteditable="true" data-a="tlink-name" spellcheck="false">${esc(l.label)}</span>
+        <button class="link-edit-btn" data-a="tlink-toggle-url" title="Edit URL">✎</button>
+        ${l.url ? `<a class="link-go" href="${esc(l.url)}" target="_blank" rel="noopener">↗</a>` : ''}
+        <button class="link-del" data-a="tlink-del">✕</button>
+      </div>
+      <input class="link-url-input${!l.url ? ' visible' : ''}" type="url" placeholder="Paste URL…" value="${esc(l.url || '')}" data-a="tlink-url">
+    </div>
+  `).join('');
+}
+
 function openModal(taskId) {
   const p = proj(); if (!p) return;
   const task = p.tasks.find(t => t.id === taskId); if (!task) return;
@@ -1811,6 +1843,7 @@ function openModal(taskId) {
   document.getElementById('modal-title').textContent = task.title;
   updateModalMeta(task);
   renderNotesList();
+  renderModalLinks();
 
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -1944,6 +1977,53 @@ document.getElementById('modal-notes-list').addEventListener('click', e => {
   }
 });
 
+
+// ── Modal links event handlers ───────────────────────────────────────────────
+document.getElementById('modal-add-link-btn').addEventListener('click', () => {
+  const t = getModalTask(); if (!t) return;
+  if (!Array.isArray(t.links)) t.links = [];
+  t.links.push({ id: uid(), label: 'New link', url: '' });
+  save(); renderModalLinks();
+  setTimeout(() => {
+    const els = document.querySelectorAll('#modal-links-list .link-name');
+    if (els.length) { els[els.length - 1].focus(); document.execCommand('selectAll'); }
+  }, 40);
+});
+
+document.getElementById('modal-links-list').addEventListener('input', e => {
+  const t = getModalTask(); if (!t) return;
+  const row = e.target.closest('[data-tlid]');
+  if (!row) return;
+  const l = t.links?.find(l => l.id === row.dataset.tlid);
+  if (!l) return;
+  if (e.target.dataset.a === 'tlink-name') { l.label = e.target.textContent.trim() || 'Link'; save(); }
+  if (e.target.dataset.a === 'tlink-url') { l.url = e.target.value.trim(); save(); renderModalLinks(); }
+});
+
+document.getElementById('modal-links-list').addEventListener('click', e => {
+  const t = getModalTask(); if (!t) return;
+  const row = e.target.closest('[data-tlid]');
+  if (!row) return;
+  const a = e.target.dataset.a;
+  if (a === 'tlink-del') {
+    t.links = t.links.filter(l => l.id !== row.dataset.tlid);
+    save(); renderModalLinks(); return;
+  }
+  if (a === 'tlink-toggle-url') {
+    const inp = row.querySelector('.link-url-input');
+    if (inp) { inp.classList.toggle('visible'); if (inp.classList.contains('visible')) inp.focus(); }
+    return;
+  }
+});
+
+document.getElementById('modal-links-list').addEventListener('change', e => {
+  const t = getModalTask(); if (!t) return;
+  if (e.target.dataset.a === 'tlink-url') {
+    const row = e.target.closest('[data-tlid]');
+    const l = t.links?.find(l => l.id === row?.dataset.tlid);
+    if (l) { l.url = e.target.value.trim(); save(); renderModalLinks(); }
+  }
+});
 
 document.getElementById('content').addEventListener('click', e => {
   const card = e.target.closest('.task-card');
