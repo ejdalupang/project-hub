@@ -457,23 +457,40 @@ body {
 .tl-date::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .tl-date.tl-ongoing { color: #00d4ff; }
 
-/* ── Project notes ── */
-#proj-notes-wrap {
-  margin: 0 32px; padding: 16px 0 20px; flex-shrink: 0;
-  border-top: 1px solid var(--border); display: none;
+/* ── Project notes section ── */
+.proj-notes-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
+.proj-notes-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
 }
-#proj-notes-label {
+.proj-notes-label {
   font-size: 10px; font-weight: 800; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 1.5px;
 }
-#proj-notes {
-  width: 100%; background: var(--surface); border: 1px solid var(--border);
-  outline: none; resize: none; border-radius: 12px;
-  font-size: 13px; color: #bbb; font-family: inherit; line-height: 1.6;
-  padding: 12px 14px; transition: border-color 0.1s, color 0.1s;
+.proj-notes-head-right { display: flex; align-items: center; gap: 6px; }
+.proj-notes-collapse-btn {
+  background: none; border: none; color: #444; cursor: pointer; font-size: 11px;
+  padding: 2px 6px; border-radius: 5px; transition: color 0.1s; font-weight: 800;
 }
-#proj-notes::placeholder { color: var(--muted2); }
-#proj-notes:focus { border-color: #444; color: #ddd; }
+.proj-notes-collapse-btn:hover { color: #aaa; }
+.add-proj-note-btn {
+  display: flex; align-items: center; gap: 5px; background: #1a1a1a;
+  border: 1px solid #2a2a2a; border-radius: 10px; cursor: pointer;
+  padding: 5px 12px; color: var(--muted); font-family: inherit; font-size: 11px;
+  font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.1s;
+}
+.add-proj-note-btn:hover { background: #222; color: var(--text); }
+.proj-notes-list { display: flex; flex-direction: column; gap: 10px; }
+.proj-notes-list.collapsed { display: none; }
+.note-entry.minimized .note-toolbar,
+.note-entry.minimized .note-body,
+.note-entry.minimized .note-done-btn,
+.note-entry.minimized .note-view-body { display: none; }
+.note-min-btn {
+  background: none; border: none; color: #444; cursor: pointer; font-size: 10px;
+  padding: 3px 5px; border-radius: 5px; transition: color 0.1s; flex-shrink: 0;
+  font-weight: 800;
+}
+.note-min-btn:hover { color: #aaa; }
 
 /* ── Links ── */
 .links-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
@@ -911,10 +928,6 @@ a.link-name:hover { text-decoration: underline; }
     </div>
     <div id="proj-stats"></div>
   </div>
-  <div id="proj-notes-wrap">
-    <div id="proj-notes-label">Project Notes</div>
-    <textarea id="proj-notes" rows="2" placeholder="Add notes about this project…"></textarea>
-  </div>
   <div id="content">
     <div id="no-project">
       <div class="big">Select<br>a Project</div>
@@ -1313,6 +1326,60 @@ function ganttView() {
   </div>`;
 }
 
+function migrateProjectNotes(p) {
+  if (!Array.isArray(p.notesList)) {
+    p.notesList = p.notes ? [{ id: uid(), title: '', body: p.notes }] : [];
+    delete p.notes;
+    save();
+  }
+  return p.notesList;
+}
+
+const projNotesCollapsed = new Set();
+const projNotesMinimized = new Set();
+const projNotesEditing = new Set();
+
+function projNotesSection(p) {
+  const notes = migrateProjectNotes(p);
+  const collapsed = projNotesCollapsed.has(p.id);
+  return `<div class="proj-notes-section">
+    <div class="proj-notes-head">
+      <span class="proj-notes-label">Project Notes</span>
+      <div class="proj-notes-head-right">
+        <button class="add-proj-note-btn" data-a="add-proj-note">＋ Add Note</button>
+        <button class="proj-notes-collapse-btn" data-a="collapse-proj-notes" title="${collapsed ? 'Expand' : 'Collapse'}">${collapsed ? '▶' : '▼'}</button>
+      </div>
+    </div>
+    <div class="proj-notes-list${collapsed ? ' collapsed' : ''}">
+      ${notes.map(n => {
+        const editing = projNotesEditing.has(n.id);
+        const minimized = projNotesMinimized.has(n.id);
+        return `<div class="note-entry ${editing ? 'editing' : 'viewing'}${minimized ? ' minimized' : ''}" data-pnid="${n.id}">
+          <div class="note-entry-header">
+            <input class="note-entry-title" type="text" placeholder="Note title…" value="${esc(n.title)}" data-pntitle="${n.id}">
+            <button class="note-min-btn" data-pnmin="${n.id}" title="${minimized ? 'Expand' : 'Minimize'}">${minimized ? '▶' : '▼'}</button>
+            <button class="note-edit-btn" data-pnedit="${n.id}" title="Edit">✎</button>
+            <button class="note-del-btn" data-pndel="${n.id}">✕</button>
+          </div>
+          <div class="note-toolbar">
+            <button class="tb-btn" data-pncmd="insertUnorderedList" data-pncid="${n.id}">• List</button>
+            <button class="tb-btn" data-pncmd="insertOrderedList" data-pncid="${n.id}">1. List</button>
+            <div class="tb-sep"></div>
+            <button class="tb-btn" data-pncmd="indent" data-pncid="${n.id}">→</button>
+            <button class="tb-btn" data-pncmd="outdent" data-pncid="${n.id}">←</button>
+            <div class="tb-sep"></div>
+            <button class="tb-btn" data-pncmd="bold" data-pncid="${n.id}"><b>B</b></button>
+            <button class="tb-btn" data-pncmd="italic" data-pncid="${n.id}"><i>I</i></button>
+          </div>
+          <div class="note-body" contenteditable="true" spellcheck="true" data-pnbody="${n.id}">${n.body || ''}</div>
+          <div class="note-view-body">${n.body || ''}</div>
+          <button class="note-done-btn" data-pndone="${n.id}">Done</button>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
 function linksSection(p) {
   return `<div class="links-section">
     <div class="links-head">
@@ -1475,23 +1542,15 @@ function renderMain() {
   const header = document.getElementById('proj-header');
   const content = document.getElementById('content');
 
-  const notesWrap = document.getElementById('proj-notes-wrap');
   if (!p) {
     header.style.display = 'none';
-    notesWrap.style.display = 'none';
     content.innerHTML = `<div id="no-project"><div class="big">Select<br>a Project</div><p>← Choose from the sidebar</p></div>`;
     return;
   }
-  notesWrap.style.display = 'block';
 
   header.style.display = 'block';
   document.getElementById('proj-title').textContent = p.name;
   document.getElementById('add-task-btn').style.background = p.color;
-
-  const notesEl = document.getElementById('proj-notes');
-  notesEl.value = p.notes || '';
-  notesEl.style.height = 'auto';
-  notesEl.style.height = Math.max(notesEl.scrollHeight, 40) + 'px';
 
   const done    = p.tasks.filter(t => t.status === 'done').length;
   const ip      = p.tasks.filter(t => t.status === 'in-progress').length;
@@ -1512,7 +1571,7 @@ function renderMain() {
   if (S.view === 'kanban')   html = kanbanView(p);
   if (S.view === 'timeline') html = timelineView(p);
   if (S.view === 'gantt')    html = ganttView();
-  if (S.view !== 'gantt') html += linksSection(p);
+  if (S.view !== 'gantt') html += projNotesSection(p) + linksSection(p);
   content.innerHTML = html;
   initKanbanDnd();
   content.querySelectorAll('textarea').forEach(ta => {
@@ -1599,12 +1658,91 @@ document.getElementById('content').addEventListener('blur', e => {
   if (a === 'link-name') { const l = getLink(e.target); if (l) { l.label = e.target.textContent.trim() || 'Link'; save(); } }
 }, true);
 
-document.getElementById('proj-notes').addEventListener('input', e => {
+// ── Project notes event handlers ────────────────────────────────────────────
+document.getElementById('content').addEventListener('input', e => {
   const p = proj(); if (!p) return;
-  p.notes = e.target.value;
-  e.target.style.height = 'auto';
-  e.target.style.height = Math.max(e.target.scrollHeight, 40) + 'px';
-  save();
+  const bodyEl = e.target.closest('[data-pnbody]');
+  if (bodyEl) {
+    const n = p.notesList?.find(n => n.id === bodyEl.dataset.pnbody);
+    if (n) { n.body = bodyEl.innerHTML; save(); }
+  }
+  const titleEl = e.target.closest('[data-pntitle]');
+  if (titleEl) {
+    const n = p.notesList?.find(n => n.id === titleEl.dataset.pntitle);
+    if (n) { n.title = titleEl.value; save(); }
+  }
+}, true);
+
+document.getElementById('content').addEventListener('click', e => {
+  const p = proj(); if (!p) return;
+
+  // Add note
+  if (e.target.closest('[data-a="add-proj-note"]')) {
+    migrateProjectNotes(p);
+    const newNote = { id: uid(), title: '', body: '' };
+    projNotesEditing.add(newNote.id);
+    p.notesList.push(newNote);
+    save(); renderMain();
+    setTimeout(() => {
+      const entries = document.querySelectorAll('[data-pnid]');
+      entries[entries.length - 1]?.querySelector('.note-entry-title')?.focus();
+    }, 30);
+    return;
+  }
+
+  // Collapse section
+  if (e.target.closest('[data-a="collapse-proj-notes"]')) {
+    if (projNotesCollapsed.has(p.id)) projNotesCollapsed.delete(p.id);
+    else projNotesCollapsed.add(p.id);
+    renderMain(); return;
+  }
+
+  // Minimize note
+  const minBtn = e.target.closest('[data-pnmin]');
+  if (minBtn) {
+    const id = minBtn.dataset.pnmin;
+    if (projNotesMinimized.has(id)) projNotesMinimized.delete(id);
+    else projNotesMinimized.add(id);
+    renderMain(); return;
+  }
+
+  // Delete note
+  const delBtn = e.target.closest('[data-pndel]');
+  if (delBtn) {
+    const id = delBtn.dataset.pndel;
+    projNotesEditing.delete(id); projNotesMinimized.delete(id);
+    p.notesList = p.notesList.filter(n => n.id !== id);
+    save(); renderMain(); return;
+  }
+
+  // Done (switch to view mode)
+  const doneBtn = e.target.closest('[data-pndone]');
+  if (doneBtn) {
+    projNotesEditing.delete(doneBtn.dataset.pndone);
+    renderMain(); return;
+  }
+
+  // Edit (switch to edit mode)
+  const editBtn = e.target.closest('[data-pnedit]');
+  if (editBtn) {
+    projNotesEditing.add(editBtn.dataset.pnedit);
+    renderMain();
+    setTimeout(() => {
+      const entry = document.querySelector(`[data-pnid="${editBtn.dataset.pnedit}"]`);
+      entry?.querySelector('.note-body')?.focus();
+    }, 30);
+    return;
+  }
+
+  // Toolbar commands
+  const toolBtn = e.target.closest('[data-pncmd]');
+  if (toolBtn) {
+    e.preventDefault();
+    const nid = toolBtn.dataset.pncid;
+    const bodyEl = document.querySelector(`[data-pnbody="${nid}"]`);
+    if (bodyEl) { bodyEl.focus(); document.execCommand(toolBtn.dataset.pncmd, false, null); }
+    return;
+  }
 });
 
 load(); render();
@@ -1630,6 +1768,7 @@ function getModalTask() {
 }
 
 const editingNotes = new Set();
+const modalNotesMinimized = new Set();
 
 function renderNotesList() {
   const t = getModalTask(); if (!t) return;
@@ -1637,10 +1776,12 @@ function renderNotesList() {
   const list = document.getElementById('modal-notes-list');
   list.innerHTML = t.notes.map((n, i) => {
     const editing = editingNotes.has(n.id);
+    const minimized = modalNotesMinimized.has(n.id);
     return `
-    <div class="note-entry ${editing ? 'editing' : 'viewing'}" data-nid="${n.id}">
+    <div class="note-entry ${editing ? 'editing' : 'viewing'}${minimized ? ' minimized' : ''}" data-nid="${n.id}">
       <div class="note-entry-header">
         <input class="note-entry-title" type="text" placeholder="Note title…" value="${esc(n.title)}" data-nidx="${i}">
+        <button class="note-min-btn" data-nmin="${n.id}" title="${minimized ? 'Expand' : 'Minimize'}">${minimized ? '▶' : '▼'}</button>
         <button class="note-edit-btn" data-nedit="${n.id}" title="Edit">✎</button>
         <button class="note-del-btn" data-ndel="${n.id}">✕</button>
       </div>
@@ -1764,10 +1905,18 @@ document.getElementById('modal-notes-list').addEventListener('input', e => {
 });
 
 document.getElementById('modal-notes-list').addEventListener('click', e => {
+  const minBtn = e.target.closest('[data-nmin]');
+  if (minBtn) {
+    const id = minBtn.dataset.nmin;
+    if (modalNotesMinimized.has(id)) modalNotesMinimized.delete(id);
+    else modalNotesMinimized.add(id);
+    renderNotesList(); return;
+  }
   const delBtn = e.target.closest('[data-ndel]');
   if (delBtn) {
     const t = getModalTask(); if (!t) return;
     editingNotes.delete(delBtn.dataset.ndel);
+    modalNotesMinimized.delete(delBtn.dataset.ndel);
     t.notes = t.notes.filter(n => n.id !== delBtn.dataset.ndel);
     save(); renderNotesList(); return;
   }
