@@ -2160,7 +2160,7 @@ async function findFreeSlots() {
     const unscheduled = getUnscheduledTasks();
     schedSuggestions = [];
 
-    const PREF_START = 9, PREF_END = 18; // 9am–6pm preferred
+    const PREF_START = 7, PREF_END = 17; // 7am–5pm preferred
     const SLOT_MINS = 30;
 
     // Build a set of busy intervals per day
@@ -2189,7 +2189,7 @@ async function findFreeSlots() {
     for (const { task, proj: p } of unscheduled) {
       for (const day of sorted) {
         // Try preferred hours first, then expand
-        const ranges = [[PREF_START, PREF_END], [8, 19]];
+        const ranges = [[PREF_START, PREF_END], [7, 17]];
         for (const [rStart, rEnd] of ranges) {
           for (let h = rStart; h < rEnd; h++) {
             for (let m = 0; m < 60; m += SLOT_MINS) {
@@ -2230,6 +2230,8 @@ function showScheduleView() {
   schedBusyBlocks = [];
   schedTaskEvents = [];
   renderScheduleView();
+  // Auto-fetch calendar data
+  findFreeSlots();
 }
 
 function hideScheduleView() {
@@ -2248,17 +2250,17 @@ document.getElementById('schedule-btn').addEventListener('click', () => {
 document.getElementById('sched-prev').addEventListener('click', () => {
   S.scheduleWeekOffset--;
   schedSuggestions = []; schedBusyBlocks = []; schedTaskEvents = [];
-  renderScheduleView();
+  renderScheduleView(); findFreeSlots();
 });
 document.getElementById('sched-next').addEventListener('click', () => {
   S.scheduleWeekOffset++;
   schedSuggestions = []; schedBusyBlocks = []; schedTaskEvents = [];
-  renderScheduleView();
+  renderScheduleView(); findFreeSlots();
 });
 document.getElementById('sched-today-btn').addEventListener('click', () => {
   S.scheduleWeekOffset = 0;
   schedSuggestions = []; schedBusyBlocks = []; schedTaskEvents = [];
-  renderScheduleView();
+  renderScheduleView(); findFreeSlots();
 });
 document.getElementById('sched-find-btn').addEventListener('click', findFreeSlots);
 </script>
