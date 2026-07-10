@@ -120,6 +120,19 @@ body {
   text-transform: uppercase; transition: all 0.1s; width: calc(100% - 24px);
 }
 #add-proj:hover { border-color: #444; color: #888; background: var(--surface); }
+#fb-auth-btn {
+  margin: 4px 12px 16px; padding: 10px 14px;
+  background: transparent; border: 1px solid #2a4a2a;
+  border-radius: 12px; color: #4a8a4a;
+  cursor: pointer; font-size: 11px; font-family: inherit; font-weight: 700;
+  display: flex; align-items: center; gap: 6px; letter-spacing: 0.5px;
+  text-transform: uppercase; transition: all 0.1s; width: calc(100% - 24px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#fb-auth-btn::before { content: '☁'; font-size: 13px; }
+#fb-auth-btn:hover { border-color: #3a7a3a; color: #6aaa6a; background: #0a1a0a; }
+#fb-auth-btn[data-signed="1"] { border-color: #00ff8833; color: #00ff88; }
+#fb-auth-btn[data-signed="1"]:hover { background: #00ff8808; }
 
 /* ── Schedule View ── */
 #schedule-view {
@@ -901,6 +914,76 @@ a.link-name:hover { text-decoration: underline; }
   background: #1a1a1a; pointer-events: none;
 }
 </style>
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getDatabase, ref, set, onValue, off }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+  // ── PASTE YOUR firebaseConfig HERE ──────────────────────────────────────────
+  const firebaseConfig = null; // e.g. { apiKey: "...", authDomain: "...", databaseURL: "...", ... }
+  // ────────────────────────────────────────────────────────────────────────────
+
+  if (!firebaseConfig) { console.warn('Firebase not configured yet.'); window.__fbReady = false; }
+  else {
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getDatabase(app);
+    let dbUnsub = null;
+
+    window.__fbReady = true;
+
+    window.__fbSignIn = async () => {
+      const provider = new GoogleAuthProvider();
+      try { await signInWithPopup(auth, provider); }
+      catch(e) { console.error('Sign-in failed', e); }
+    };
+
+    window.__fbSignOut = async () => {
+      if (dbUnsub) { off(ref(db)); dbUnsub = null; }
+      await signOut(auth);
+    };
+
+    onAuthStateChanged(auth, user => {
+      const btn = document.getElementById('fb-auth-btn');
+      const indicator = document.getElementById('fb-sync-indicator');
+      if (user) {
+        if (btn) { btn.textContent = 'Signed in as ' + (user.displayName || user.email); btn.title = 'Click to sign out'; btn.dataset.signed = '1'; }
+        if (indicator) indicator.title = 'Synced to Firebase';
+        // listen for remote changes
+        const dataRef = ref(db, 'users/' + user.uid + '/data');
+        dbUnsub = onValue(dataRef, snapshot => {
+          const val = snapshot.val();
+          if (val && val.projects) {
+            // only apply if remote is newer or local is empty
+            const remoteTs = val._ts || 0;
+            const localTs  = window.__localTs || 0;
+            if (remoteTs >= localTs) {
+              window.__localTs = remoteTs;
+              S.projects = val.projects;
+              S.projects.forEach(p => { if (!p.category) p.category = 'work'; });
+              if (!S.activeId || !S.projects.find(p => p.id === S.activeId))
+                S.activeId = S.projects[0]?.id || null;
+              render();
+            }
+          }
+        });
+        window.__fbSave = (data) => {
+          const ts = Date.now();
+          window.__localTs = ts;
+          set(ref(db, 'users/' + user.uid + '/data'), { ...data, _ts: ts });
+        };
+      } else {
+        if (btn) { btn.textContent = 'Sync to Cloud'; btn.title = 'Sign in with Google to sync across devices'; btn.dataset.signed = ''; }
+        if (indicator) indicator.title = 'Not synced';
+        if (dbUnsub) { off(ref(db)); dbUnsub = null; }
+        window.__fbSave = null;
+      }
+    });
+  }
+</script>
 </head>
 <body>
 
@@ -915,6 +998,7 @@ a.link-name:hover { text-decoration: underline; }
   <div id="projects-list"></div>
   <button id="schedule-btn">📅 Schedule</button>
   <button id="add-proj">＋ New Project</button>
+  <button id="fb-auth-btn">Sync to Cloud</button>
 </div>
 
 <div id="main">
@@ -1105,7 +1189,9 @@ let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ projects: S.projects }));
+    const data = { projects: S.projects };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (window.__fbSave) window.__fbSave(data);
     const dot = document.getElementById('save-dot');
     dot.classList.add('show');
     setTimeout(() => dot.classList.remove('show'), 1200);
@@ -1610,6 +1696,13 @@ document.getElementById('projects-list').addEventListener('click', e => {
   }
   const item = e.target.closest('[data-pid]');
   if (item) { S.activeId = item.dataset.pid; render(); }
+});
+
+document.getElementById('fb-auth-btn').addEventListener('click', () => {
+  if (!window.__fbReady) { alert('Firebase not configured yet. Paste your firebaseConfig into the code.'); return; }
+  const btn = document.getElementById('fb-auth-btn');
+  if (btn.dataset.signed === '1') { if (confirm('Sign out of cloud sync?')) window.__fbSignOut(); }
+  else window.__fbSignIn();
 });
 
 document.getElementById('add-proj').addEventListener('click', () => {
