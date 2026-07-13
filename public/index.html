@@ -1066,7 +1066,7 @@ a.link-name:hover { text-decoration: underline; }
       await signOut(auth);
     };
 
-    onAuthStateChanged(auth, user => {
+    onAuthStateChanged(auth, async user => {
       const btn = document.getElementById('fb-auth-btn');
       const indicator = document.getElementById('fb-sync-indicator');
       const pullBtn = document.getElementById('fb-pull-btn');
