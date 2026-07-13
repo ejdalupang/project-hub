@@ -1080,27 +1080,42 @@ a.link-name:hover { text-decoration: underline; }
           set(ref(db, 'users/' + user.uid + '/data'), { ...data, _ts: Date.now() });
         };
 
+        const applyFirebaseData = (fbData) => {
+          if (fbData.projects) {
+            fbData.projects = Array.isArray(fbData.projects)
+              ? fbData.projects
+              : Object.values(fbData.projects);
+            fbData.projects = fbData.projects.map(p => ({
+              ...p,
+              tasks: Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : [])
+            }));
+          }
+          delete fbData._ts;
+          localStorage.setItem('project-hub-data-v2', JSON.stringify(fbData));
+          location.reload();
+        };
+
         window.__fbPull = async () => {
           try {
             const snap = await get(dataRef);
             if (!snap.exists()) { alert('No cloud data found.'); return; }
-            const fbData = snap.val();
-            if (fbData.projects) {
-              fbData.projects = Array.isArray(fbData.projects)
-                ? fbData.projects
-                : Object.values(fbData.projects);
-              fbData.projects = fbData.projects.map(p => ({
-                ...p,
-                tasks: Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : [])
-              }));
-            }
-            delete fbData._ts;
-            localStorage.setItem('project-hub-data-v2', JSON.stringify(fbData));
-            location.reload();
+            applyFirebaseData(snap.val());
           } catch(e) { alert('Pull failed: ' + e.message); }
         };
 
-        // No auto-push on sign-in — prevents phone from overwriting laptop's Firebase data
+        // Auto-sync on sign-in: pull if Firebase is newer, push if local is newer
+        try {
+          const snap = await get(dataRef);
+          const localRaw = localStorage.getItem('project-hub-data-v2');
+          const localTs = localRaw ? (JSON.parse(localRaw)._ts || 0) : 0;
+          const fbTs = snap.exists() ? (snap.val()._ts || 0) : 0;
+          if (fbTs > localTs) {
+            applyFirebaseData(snap.val()); // phone: pull newer cloud data
+          } else {
+            const parsed = localRaw ? JSON.parse(localRaw) : null;
+            if (parsed && parsed.projects && parsed.projects.length) window.__fbSave(parsed);
+          }
+        } catch(e) {}
 
       } else {
         if (btn) { btn.textContent = 'Sync to Cloud'; btn.title = 'Sign in with Google to sync across devices'; btn.dataset.signed = ''; }
