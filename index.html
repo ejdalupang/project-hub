@@ -1065,51 +1065,43 @@ a.link-name:hover { text-decoration: underline; }
         if (indicator) indicator.title = 'Synced to Firebase';
         // listen for remote changes
         const dataRef = ref(db, 'users/' + user.uid + '/data');
-        dbUnsub = onValue(dataRef, snapshot => {
-          try {
-            const val = snapshot.val();
-            // First load: if Firebase empty, push local data up
-            if (firstSync) {
-              firstSync = false;
-              if (!val || !val.projects) {
-                const raw = localStorage.getItem('project-hub-data-v2');
-                if (raw) {
-                  try {
-                    const parsed = JSON.parse(raw);
-                    if (parsed.projects && parsed.projects.length) {
-                      window.__fbSave({ projects: parsed.projects });
-                      return;
-                    }
-                  } catch(e) {}
-                }
-              }
-            }
-            if (val && val.projects) {
-              const remoteTs = val._ts || 0;
-              const localTs  = window.__localTs || 0;
-              if (remoteTs >= localTs) {
-                window.__localTs = remoteTs;
-                // Firebase may return array-as-object — normalize to array
-                const proj = Array.isArray(val.projects)
-                  ? val.projects
-                  : Object.values(val.projects);
-                S.projects = proj.filter(Boolean);
-                S.projects.forEach(p => { if (!p.category) p.category = 'work'; });
-                if (!S.activeId || !S.projects.find(p => p.id === S.activeId))
-                  S.activeId = S.projects[0]?.id || null;
-                localStorage.setItem('project-hub-data-v2', JSON.stringify({ projects: S.projects }));
-                render();
-              }
-            }
-          } catch(e) { console.error('Firebase sync error', e); }
-        });
         window.__fbSave = (data) => {
           const ts = Date.now();
           window.__localTs = ts;
           set(ref(db, 'users/' + user.uid + '/data'), { ...data, _ts: ts });
         };
-        // On first onValue, if Firebase is empty push local data up
         let firstSync = true;
+        dbUnsub = onValue(dataRef, snapshot => {
+          try {
+            const val = snapshot.val();
+            // Normalize Firebase array-as-object to real array
+            const toArr = (v) => !v ? null : Array.isArray(v) ? v : Object.values(v);
+            const remoteProjects = val && val.projects ? toArr(val.projects).filter(Boolean) : null;
+            const remoteTs = val?._ts || 0;
+
+            if (firstSync) {
+              firstSync = false;
+              // Get local projects
+              let localProjects = [];
+              try { const r = localStorage.getItem('project-hub-data-v2'); if (r) localProjects = JSON.parse(r).projects || []; } catch(e) {}
+              // Local wins if it has more projects — push up and wait for the triggered onValue
+              if (localProjects.length > (remoteProjects ? remoteProjects.length : 0)) {
+                window.__fbSave({ projects: localProjects });
+                return;
+              }
+            }
+
+            // Apply remote only if it has data and isn't older than our last save
+            if (remoteProjects && remoteTs >= (window.__localTs || 0)) {
+              window.__localTs = remoteTs;
+              S.projects = remoteProjects;
+              S.projects.forEach(p => { if (!p.category) p.category = 'work'; });
+              if (!S.activeId || !S.projects.find(p => p.id === S.activeId))
+                S.activeId = S.projects[0]?.id || null;
+              render();
+            }
+          } catch(e) { console.error('Firebase sync error', e); }
+        });
       } else {
         if (btn) { btn.textContent = 'Sync to Cloud'; btn.title = 'Sign in with Google to sync across devices'; btn.dataset.signed = ''; }
         if (indicator) indicator.title = 'Not synced';
