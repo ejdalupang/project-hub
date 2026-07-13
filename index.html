@@ -1021,7 +1021,7 @@ a.link-name:hover { text-decoration: underline; }
 <!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getDatabase, ref, set, onValue, off }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
@@ -1045,20 +1045,11 @@ a.link-name:hover { text-decoration: underline; }
 
     window.__fbReady = true;
 
-    // Handle redirect result on page load (after mobile sign-in)
-    getRedirectResult(auth).catch(e => console.error('Redirect result error', e));
-
     window.__fbSignIn = async () => {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      // Use redirect on mobile (popup blocked by Safari), popup on desktop
-      if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-        try { await signInWithRedirect(auth, provider); }
-        catch(e) { console.error('Sign-in failed', e); }
-      } else {
-        try { await signInWithPopup(auth, provider); }
-        catch(e) { console.error('Sign-in failed', e); }
-      }
+      try { await signInWithPopup(auth, provider); }
+      catch(e) { console.error('Sign-in failed', e); alert('Sign-in failed: ' + e.message); }
     };
 
     window.__fbSignOut = async () => {
@@ -1070,7 +1061,7 @@ a.link-name:hover { text-decoration: underline; }
       const btn = document.getElementById('fb-auth-btn');
       const indicator = document.getElementById('fb-sync-indicator');
       if (user) {
-        if (btn) { btn.textContent = 'Signed in as ' + (user.displayName || user.email); btn.title = 'Click to sign out'; btn.dataset.signed = '1'; }
+        if (btn) { btn.textContent = (user.displayName || user.email || 'Signed in'); btn.title = 'Tap to sign out'; btn.dataset.signed = '1'; }
         if (indicator) indicator.title = 'Synced to Firebase';
         // listen for remote changes
         const dataRef = ref(db, 'users/' + user.uid + '/data');
