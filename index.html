@@ -936,8 +936,10 @@ a.link-name:hover { text-decoration: underline; }
     position: fixed; left: 0; top: 0; bottom: 0;
     z-index: 100; transform: translateX(-100%);
     transition: transform 0.25s ease; width: 280px; min-width: 280px;
+    overflow-y: auto;
   }
   #sidebar.open { transform: translateX(0); }
+  #projects-list { flex: 0 0 auto; }
 
   #main { width: 100%; }
 
@@ -958,7 +960,7 @@ a.link-name:hover { text-decoration: underline; }
 
   #content { padding: 0 12px 80px; }
 
-  .task-card { touch-action: manipulation; }
+  .task-card { touch-action: manipulation; min-height: 0 !important; }
 
   /* Cards view: single column */
   #cards-grid { grid-template-columns: 1fr !important; }
