@@ -927,10 +927,15 @@ a.link-name:hover { text-decoration: underline; }
   border-bottom: 1px solid var(--border);
   align-items: center; padding: 0 12px;
   padding-top: env(safe-area-inset-top);
+  pointer-events: auto;
 }
 #hamburger {
   width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
+  pointer-events: auto; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none; -webkit-user-select: none;
 }
 #sidebar-overlay {
   display: none; position: fixed; inset: 0;
@@ -939,8 +944,6 @@ a.link-name:hover { text-decoration: underline; }
 #sidebar-overlay.open { display: block; }
 
 @media (max-width: 700px) {
-  body { overflow: hidden; }
-
   #mobile-topbar { display: flex; }
   #main { padding-top: 50px; }
 
@@ -950,6 +953,7 @@ a.link-name:hover { text-decoration: underline; }
     transition: transform 0.25s ease; width: 85vw; min-width: 260px; max-width: 320px;
     overflow-x: hidden; overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
   #sidebar.open { transform: translateX(0); }
   #projects-list { flex: 0 0 auto; }
@@ -1806,11 +1810,12 @@ document.getElementById('projects-list').addEventListener('click', e => {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebar-overlay');
   const ham = document.getElementById('hamburger');
-  function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('open'); }
-  function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+  function openSidebar(e) { e && e.preventDefault(); sidebar.classList.add('open'); overlay.classList.add('open'); }
+  function closeSidebar(e) { e && e.preventDefault(); sidebar.classList.remove('open'); overlay.classList.remove('open'); }
   ham.addEventListener('click', openSidebar);
+  ham.addEventListener('touchend', openSidebar, { passive: false });
   overlay.addEventListener('click', closeSidebar);
-  // Close sidebar when a project is selected on mobile
+  overlay.addEventListener('touchend', closeSidebar, { passive: false });
   document.getElementById('projects-list').addEventListener('click', () => {
     if (window.innerWidth <= 700) closeSidebar();
   });
