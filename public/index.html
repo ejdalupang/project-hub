@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Project Hub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -922,10 +922,15 @@ a.link-name:hover { text-decoration: underline; }
 }
 #mobile-topbar {
   display: none;
-  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
-  height: 44px; background: var(--bg);
+  position: fixed; top: 0; left: 0; right: 0; z-index: 98;
+  height: 50px; background: var(--bg);
   border-bottom: 1px solid var(--border);
   align-items: center; padding: 0 12px;
+  padding-top: env(safe-area-inset-top);
+}
+#hamburger {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
 }
 #sidebar-overlay {
   display: none; position: fixed; inset: 0;
@@ -937,16 +942,20 @@ a.link-name:hover { text-decoration: underline; }
   body { overflow: hidden; }
 
   #mobile-topbar { display: flex; }
-  #main { padding-top: 44px; }
+  #main { padding-top: 50px; }
 
   #sidebar {
     position: fixed; left: 0; top: 0; bottom: 0;
     z-index: 100; transform: translateX(-100%);
-    transition: transform 0.25s ease; width: 280px; min-width: 280px;
-    overflow-y: auto;
+    transition: transform 0.25s ease; width: 85vw; min-width: 260px; max-width: 320px;
+    overflow-x: hidden; overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
   }
   #sidebar.open { transform: translateX(0); }
   #projects-list { flex: 0 0 auto; }
+
+  /* ensure sidebar buttons are always reachable */
+  #add-proj, #fb-auth-btn, #schedule-btn { flex-shrink: 0; }
 
   #main { width: 100%; }
 
