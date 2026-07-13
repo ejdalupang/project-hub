@@ -1087,7 +1087,9 @@ a.link-name:hover { text-decoration: underline; }
               : Object.values(fbData.projects);
             fbData.projects = fbData.projects.map(p => ({
               ...p,
-              tasks: Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : [])
+              tasks: Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : []),
+              links: Array.isArray(p.links) ? p.links : (p.links ? Object.values(p.links) : []),
+              notesList: Array.isArray(p.notesList) ? p.notesList : (p.notesList ? Object.values(p.notesList) : [])
             }));
           }
           localStorage.setItem('project-hub-data-v2', JSON.stringify(fbData));
@@ -1327,7 +1329,12 @@ function load() {
     S.projects = (stored ? JSON.parse(stored) : DEFAULT_DATA).projects || [];
   } catch { S.projects = DEFAULT_DATA.projects; }
   // migrate: ensure every project has a category
-  S.projects.forEach(p => { if (!p.category) p.category = 'work'; });
+  S.projects.forEach(p => {
+    if (!p.category) p.category = 'work';
+    if (!Array.isArray(p.tasks)) p.tasks = p.tasks ? Object.values(p.tasks) : [];
+    if (!Array.isArray(p.links)) p.links = p.links ? Object.values(p.links) : [];
+    if (!Array.isArray(p.notesList)) p.notesList = p.notesList ? Object.values(p.notesList) : [];
+  });
   if (S.projects.length) S.activeId = S.projects[0].id;
 }
 
@@ -1636,7 +1643,7 @@ function linksSection(p) {
       <span class="links-label">Links &amp; Docs</span>
       <button class="add-link-btn" data-a="add-link">＋ Add</button>
     </div>
-    ${p.links.map(l => `
+    ${(p.links || []).map(l => `
       <div class="link-row" data-lid="${l.id}">
         <div class="link-row-top">
           <span class="link-name" contenteditable="true" data-a="link-name" spellcheck="false">${esc(l.label)}</span>
