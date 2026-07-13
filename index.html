@@ -1077,7 +1077,7 @@ a.link-name:hover { text-decoration: underline; }
         const dataRef = ref(db, 'users/' + user.uid + '/data');
 
         window.__fbSave = (data) => {
-          set(ref(db, 'users/' + user.uid + '/data'), { ...data, _ts: Date.now() });
+          set(ref(db, 'users/' + user.uid + '/data'), data);
         };
 
         const applyFirebaseData = (fbData) => {
@@ -1335,7 +1335,7 @@ let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    const data = { projects: S.projects };
+    const data = { projects: S.projects, _ts: Date.now() };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     if (window.__fbSave) window.__fbSave(data);
     const dot = document.getElementById('save-dot');
