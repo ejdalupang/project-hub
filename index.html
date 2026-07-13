@@ -133,6 +133,15 @@ body {
 #fb-auth-btn:hover { border-color: #3a7a3a; color: #6aaa6a; background: #0a1a0a; }
 #fb-auth-btn[data-signed="1"] { border-color: #00ff8833; color: #00ff88; }
 #fb-auth-btn[data-signed="1"]:hover { background: #00ff8808; }
+#fb-pull-btn {
+  margin: 0 12px 16px; padding: 10px 14px;
+  background: transparent; border: 1px solid #2a3a5a;
+  border-radius: 12px; color: #4a6aaa;
+  cursor: pointer; font-size: 11px; font-family: inherit; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.1s;
+  width: calc(100% - 24px); touch-action: manipulation;
+}
+#fb-pull-btn:hover { border-color: #3a5aaa; color: #6a8add; background: #0a0a1a; }
 
 /* ── Schedule View ── */
 #schedule-view {
@@ -1060,17 +1069,39 @@ a.link-name:hover { text-decoration: underline; }
     onAuthStateChanged(auth, user => {
       const btn = document.getElementById('fb-auth-btn');
       const indicator = document.getElementById('fb-sync-indicator');
+      const pullBtn = document.getElementById('fb-pull-btn');
       if (user) {
         if (btn) { btn.textContent = (user.displayName || user.email || 'Signed in'); btn.title = 'Tap to sign out'; btn.dataset.signed = '1'; }
         if (indicator) indicator.title = 'Synced to Firebase';
+        if (pullBtn) pullBtn.style.display = '';
         const dataRef = ref(db, 'users/' + user.uid + '/data');
 
-        // Always push local data to Firebase on sign-in (backup)
         window.__fbSave = (data) => {
           set(ref(db, 'users/' + user.uid + '/data'), { ...data, _ts: Date.now() });
         };
 
-        // Push current local state immediately on sign-in
+        window.__fbPull = async () => {
+          const { get } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+          try {
+            const snap = await get(dataRef);
+            if (!snap.exists()) { alert('No cloud data found.'); return; }
+            const fbData = snap.val();
+            if (fbData.projects) {
+              fbData.projects = Array.isArray(fbData.projects)
+                ? fbData.projects
+                : Object.values(fbData.projects);
+              fbData.projects = fbData.projects.map(p => ({
+                ...p,
+                tasks: Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : [])
+              }));
+            }
+            delete fbData._ts;
+            localStorage.setItem('project-hub-data-v2', JSON.stringify(fbData));
+            location.reload();
+          } catch(e) { alert('Pull failed: ' + e.message); }
+        };
+
+        // Push current local state to Firebase on sign-in
         try {
           const raw = localStorage.getItem('project-hub-data-v2');
           if (raw) {
@@ -1079,12 +1110,13 @@ a.link-name:hover { text-decoration: underline; }
           }
         } catch(e) {}
 
-        // Keep listening so future saves push in real-time — no auto-pull on sign-in
       } else {
         if (btn) { btn.textContent = 'Sync to Cloud'; btn.title = 'Sign in with Google to sync across devices'; btn.dataset.signed = ''; }
         if (indicator) indicator.title = 'Not synced';
+        if (pullBtn) pullBtn.style.display = 'none';
         if (dbUnsub) { off(ref(db)); dbUnsub = null; }
         window.__fbSave = null;
+        window.__fbPull = null;
       }
     });
   }
@@ -1105,6 +1137,7 @@ a.link-name:hover { text-decoration: underline; }
     <button id="schedule-btn">📅 Schedule</button>
     <button id="add-proj">＋ New Project</button>
     <button id="fb-auth-btn">Sync to Cloud</button>
+    <button id="fb-pull-btn" style="display:none">⬇ Pull from Cloud</button>
   </div>
 </div>
 
@@ -1830,6 +1863,10 @@ document.getElementById('fb-auth-btn').addEventListener('click', () => {
   const btn = document.getElementById('fb-auth-btn');
   if (btn.dataset.signed === '1') { if (confirm('Sign out of cloud sync?')) window.__fbSignOut(); }
   else window.__fbSignIn();
+});
+
+document.getElementById('fb-pull-btn').addEventListener('click', () => {
+  if (window.__fbPull) window.__fbPull();
 });
 
 document.getElementById('add-proj').addEventListener('click', () => {
