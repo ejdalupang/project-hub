@@ -1090,7 +1090,6 @@ a.link-name:hover { text-decoration: underline; }
               tasks: Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : [])
             }));
           }
-          delete fbData._ts;
           localStorage.setItem('project-hub-data-v2', JSON.stringify(fbData));
           location.reload();
         };
