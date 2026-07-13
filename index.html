@@ -916,10 +916,16 @@ a.link-name:hover { text-decoration: underline; }
 
 /* ── Mobile ── */
 #hamburger {
-  display: none;
   background: none; border: none; color: var(--text);
   font-size: 20px; cursor: pointer; padding: 4px 8px;
   line-height: 1; flex-shrink: 0;
+}
+#mobile-topbar {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  height: 44px; background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  align-items: center; padding: 0 12px;
 }
 #sidebar-overlay {
   display: none; position: fixed; inset: 0;
@@ -930,7 +936,8 @@ a.link-name:hover { text-decoration: underline; }
 @media (max-width: 700px) {
   body { overflow: hidden; }
 
-  #hamburger { display: flex; align-items: center; }
+  #mobile-topbar { display: flex; }
+  #main { padding-top: 44px; }
 
   #sidebar {
     position: fixed; left: 0; top: 0; bottom: 0;
@@ -1086,13 +1093,13 @@ a.link-name:hover { text-decoration: underline; }
 </div>
 
 <div id="sidebar-overlay"></div>
+<div id="mobile-topbar"><button id="hamburger" aria-label="Menu">☰</button></div>
 
 <div id="main">
   <div id="proj-header">
     <div id="proj-header-top">
       <div id="proj-title-wrap">
         <div id="proj-eyebrow">
-          <button id="hamburger" aria-label="Menu">☰</button>
           <span>Active Project</span>
           <div id="save-dot"></div>
         </div>
