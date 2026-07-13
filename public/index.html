@@ -1086,6 +1086,23 @@ a.link-name:hover { text-decoration: underline; }
           window.__localTs = ts;
           set(ref(db, 'users/' + user.uid + '/data'), { ...data, _ts: ts });
         };
+        // Push current local data to Firebase on sign-in if Firebase has nothing or is older
+        const localData = localStorage.getItem('project-hub-data-v2');
+        if (localData) {
+          try {
+            const parsed = JSON.parse(localData);
+            if (parsed.projects && parsed.projects.length) {
+              // Let onValue fire first, then decide
+              setTimeout(() => {
+                const localTs = window.__localTs || 0;
+                // If Firebase had no data (localTs still 0), push local data up
+                if (localTs === 0 && parsed.projects.length > 0) {
+                  window.__fbSave({ projects: parsed.projects });
+                }
+              }, 2000);
+            }
+          } catch(e) {}
+        }
       } else {
         if (btn) { btn.textContent = 'Sync to Cloud'; btn.title = 'Sign in with Google to sync across devices'; btn.dataset.signed = ''; }
         if (indicator) indicator.title = 'Not synced';
