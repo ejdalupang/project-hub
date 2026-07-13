@@ -1714,8 +1714,9 @@ function initKanbanDnd() {
 }
 
 function projItemHtml(p) {
-  const done = p.tasks.filter(t => t.status === 'done').length;
-  const total = p.tasks.length;
+  const tasks = Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : []);
+  const done = tasks.filter(t => t.status === 'done').length;
+  const total = tasks.length;
   const pct = total ? Math.round((done / total) * 100) : 0;
   return `<div class="proj-item${p.id === S.activeId ? ' active' : ''}" data-pid="${p.id}" data-category="${p.category || 'work'}" draggable="true">
     <div class="proj-neon-dot" style="background:${p.color}"></div>
