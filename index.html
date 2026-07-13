@@ -913,6 +913,82 @@ a.link-name:hover { text-decoration: underline; }
   position: absolute; top: 0; bottom: 0; width: 1px;
   background: #1a1a1a; pointer-events: none;
 }
+
+/* ── Mobile ── */
+#hamburger {
+  display: none;
+  background: none; border: none; color: var(--text);
+  font-size: 20px; cursor: pointer; padding: 4px 8px;
+  line-height: 1; flex-shrink: 0;
+}
+#sidebar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); z-index: 99;
+}
+#sidebar-overlay.open { display: block; }
+
+@media (max-width: 700px) {
+  body { overflow: hidden; }
+
+  #hamburger { display: flex; align-items: center; }
+
+  #sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    z-index: 100; transform: translateX(-100%);
+    transition: transform 0.25s ease; width: 280px; min-width: 280px;
+  }
+  #sidebar.open { transform: translateX(0); }
+
+  #main { width: 100%; }
+
+  #proj-header {
+    padding: 16px 16px 12px;
+  }
+  #proj-header-top {
+    flex-direction: column; gap: 10px; align-items: stretch;
+  }
+  #proj-title { font-size: 26px; }
+  #proj-eyebrow { align-items: center; }
+  #proj-header-actions {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  #view-toggle { flex: 1; overflow-x: auto; }
+  #view-toggle::-webkit-scrollbar { display: none; }
+  #add-task-btn { flex-shrink: 0; }
+
+  #content { padding: 0 12px 80px; }
+
+  .task-card { touch-action: manipulation; }
+
+  /* Cards view: single column */
+  #cards-grid { grid-template-columns: 1fr !important; }
+
+  /* Kanban: horizontal scroll */
+  #kanban-board { overflow-x: auto; }
+  .kanban-col { min-width: 260px; }
+
+  /* Schedule header */
+  #schedule-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+  #schedule-body { flex-direction: column; }
+  #schedule-sidebar { width: 100%; min-width: unset; border-left: none; border-top: 1px solid var(--border); max-height: 180px; }
+
+  /* Modal: full screen */
+  #modal-overlay { align-items: flex-end; }
+  #modal {
+    border-radius: 20px 20px 0 0; max-height: 92vh;
+    width: 100% !important; max-width: 100% !important;
+    overflow-y: auto;
+  }
+
+  /* No-project empty state */
+  #no-project .big { font-size: 48px; }
+
+  /* Proj header mobile hamburger row */
+  #proj-eyebrow { flex-direction: row; }
+  #mobile-header-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+}
 </style>
 <!-- Firebase SDKs -->
 <script type="module">
@@ -1007,11 +1083,14 @@ a.link-name:hover { text-decoration: underline; }
   <button id="fb-auth-btn">Sync to Cloud</button>
 </div>
 
+<div id="sidebar-overlay"></div>
+
 <div id="main">
   <div id="proj-header">
     <div id="proj-header-top">
       <div id="proj-title-wrap">
         <div id="proj-eyebrow">
+          <button id="hamburger" aria-label="Menu">☰</button>
           <span>Active Project</span>
           <div id="save-dot"></div>
         </div>
@@ -1703,6 +1782,21 @@ document.getElementById('projects-list').addEventListener('click', e => {
   const item = e.target.closest('[data-pid]');
   if (item) { S.activeId = item.dataset.pid; render(); }
 });
+
+// Hamburger sidebar toggle for mobile
+(function() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const ham = document.getElementById('hamburger');
+  function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('open'); }
+  function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+  ham.addEventListener('click', openSidebar);
+  overlay.addEventListener('click', closeSidebar);
+  // Close sidebar when a project is selected on mobile
+  document.getElementById('projects-list').addEventListener('click', () => {
+    if (window.innerWidth <= 700) closeSidebar();
+  });
+})();
 
 document.getElementById('fb-auth-btn').addEventListener('click', () => {
   if (!window.__fbReady) { alert('Firebase not configured yet. Paste your firebaseConfig into the code.'); return; }
