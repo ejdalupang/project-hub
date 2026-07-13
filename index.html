@@ -1100,14 +1100,7 @@ a.link-name:hover { text-decoration: underline; }
           } catch(e) { alert('Pull failed: ' + e.message); }
         };
 
-        // Push current local state to Firebase on sign-in
-        try {
-          const raw = localStorage.getItem('project-hub-data-v2');
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed.projects && parsed.projects.length) window.__fbSave(parsed);
-          }
-        } catch(e) {}
+        // No auto-push on sign-in — prevents phone from overwriting laptop's Firebase data
 
       } else {
         if (btn) { btn.textContent = 'Sync to Cloud'; btn.title = 'Sign in with Google to sync across devices'; btn.dataset.signed = ''; }
