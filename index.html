@@ -945,7 +945,7 @@ a.link-name:hover { text-decoration: underline; }
 
 @media (max-width: 700px) {
   #mobile-topbar { display: flex; }
-  #main { padding-top: 50px; }
+  #main { padding-top: calc(50px + env(safe-area-inset-top)); }
 
   #sidebar {
     position: fixed; left: 0; top: 0; bottom: 0;
@@ -954,9 +954,11 @@ a.link-name:hover { text-decoration: underline; }
     overflow-x: hidden; overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
   #sidebar.open { transform: translateX(0); }
-  #projects-list { flex: 0 0 auto; }
+  /* let sidebar itself scroll — disable inner scroll on projects list */
+  #projects-list { flex: 0 0 auto; overflow-y: visible; max-height: none; }
 
   /* ensure sidebar buttons are always reachable */
   #add-proj, #fb-auth-btn, #schedule-btn { flex-shrink: 0; }
