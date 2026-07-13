@@ -922,9 +922,15 @@ a.link-name:hover { text-decoration: underline; }
   import { getDatabase, ref, set, onValue, off }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
-  // ── PASTE YOUR firebaseConfig HERE ──────────────────────────────────────────
-  const firebaseConfig = null; // e.g. { apiKey: "...", authDomain: "...", databaseURL: "...", ... }
-  // ────────────────────────────────────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyCQww0qrqo2vBJl9Vyd0LlZIRXqGwaXFHs",
+    authDomain: "project-hub-d866d.firebaseapp.com",
+    databaseURL: "https://project-hub-d866d-default-rtdb.firebaseio.com",
+    projectId: "project-hub-d866d",
+    storageBucket: "project-hub-d866d.firebasestorage.app",
+    messagingSenderId: "86002357853",
+    appId: "1:86002357853:web:9ff881e33e49de04ad9fb4"
+  };
 
   if (!firebaseConfig) { console.warn('Firebase not configured yet.'); window.__fbReady = false; }
   else {
