@@ -1063,45 +1063,23 @@ a.link-name:hover { text-decoration: underline; }
       if (user) {
         if (btn) { btn.textContent = (user.displayName || user.email || 'Signed in'); btn.title = 'Tap to sign out'; btn.dataset.signed = '1'; }
         if (indicator) indicator.title = 'Synced to Firebase';
-        // listen for remote changes
         const dataRef = ref(db, 'users/' + user.uid + '/data');
+
+        // Always push local data to Firebase on sign-in (backup)
         window.__fbSave = (data) => {
-          const ts = Date.now();
-          window.__localTs = ts;
-          set(ref(db, 'users/' + user.uid + '/data'), { ...data, _ts: ts });
+          set(ref(db, 'users/' + user.uid + '/data'), { ...data, _ts: Date.now() });
         };
-        let firstSync = true;
-        dbUnsub = onValue(dataRef, snapshot => {
-          try {
-            const val = snapshot.val();
-            // Normalize Firebase array-as-object to real array
-            const toArr = (v) => !v ? null : Array.isArray(v) ? v : Object.values(v);
-            const remoteProjects = val && val.projects ? toArr(val.projects).filter(Boolean) : null;
-            const remoteTs = val?._ts || 0;
 
-            if (firstSync) {
-              firstSync = false;
-              // Get local projects
-              let localProjects = [];
-              try { const r = localStorage.getItem('project-hub-data-v2'); if (r) localProjects = JSON.parse(r).projects || []; } catch(e) {}
-              // Local wins if it has more projects — push up and wait for the triggered onValue
-              if (localProjects.length > (remoteProjects ? remoteProjects.length : 0)) {
-                window.__fbSave({ projects: localProjects });
-                return;
-              }
-            }
+        // Push current local state immediately on sign-in
+        try {
+          const raw = localStorage.getItem('project-hub-data-v2');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.projects && parsed.projects.length) window.__fbSave(parsed);
+          }
+        } catch(e) {}
 
-            // Apply remote only if it has data and isn't older than our last save
-            if (remoteProjects && remoteTs >= (window.__localTs || 0)) {
-              window.__localTs = remoteTs;
-              S.projects = remoteProjects;
-              S.projects.forEach(p => { if (!p.category) p.category = 'work'; });
-              if (!S.activeId || !S.projects.find(p => p.id === S.activeId))
-                S.activeId = S.projects[0]?.id || null;
-              render();
-            }
-          } catch(e) { console.error('Firebase sync error', e); }
-        });
+        // Keep listening so future saves push in real-time — no auto-pull on sign-in
       } else {
         if (btn) { btn.textContent = 'Sync to Cloud'; btn.title = 'Sign in with Google to sync across devices'; btn.dataset.signed = ''; }
         if (indicator) indicator.title = 'Not synced';
