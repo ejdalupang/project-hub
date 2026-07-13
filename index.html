@@ -964,8 +964,8 @@ a.link-name:hover { text-decoration: underline; }
   #cards-grid { grid-template-columns: 1fr !important; }
 
   /* Kanban: horizontal scroll */
-  #kanban-board { overflow-x: auto; }
-  .kanban-col { min-width: 260px; }
+  #kanban-view { overflow-x: auto !important; flex-wrap: nowrap !important; }
+  .k-col { min-width: 240px; flex-shrink: 0; }
 
   /* Schedule header */
   #schedule-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
