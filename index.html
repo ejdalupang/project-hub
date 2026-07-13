@@ -1102,17 +1102,14 @@ a.link-name:hover { text-decoration: underline; }
           } catch(e) { alert('Pull failed: ' + e.message); }
         };
 
-        // Auto-sync on sign-in: pull if Firebase is newer, push if local is newer
+        // Auto-pull on sign-in if Firebase has newer data than local
         try {
           const snap = await get(dataRef);
           const localRaw = localStorage.getItem('project-hub-data-v2');
           const localTs = localRaw ? (JSON.parse(localRaw)._ts || 0) : 0;
           const fbTs = snap.exists() ? (snap.val()._ts || 0) : 0;
           if (fbTs > localTs) {
-            applyFirebaseData(snap.val()); // phone: pull newer cloud data
-          } else {
-            const parsed = localRaw ? JSON.parse(localRaw) : null;
-            if (parsed && parsed.projects && parsed.projects.length) window.__fbSave(parsed);
+            applyFirebaseData(snap.val());
           }
         } catch(e) {}
 
