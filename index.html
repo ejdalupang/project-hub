@@ -2472,6 +2472,18 @@ document.getElementById('cal-confirm-btn').addEventListener('click', async () =>
   btn.disabled = true;
   try {
     await createCalendarEvent(startDate, endDate, startTime, endTime);
+    // Save time back to the task so it shows as scheduled
+    if (startTime) {
+      t.startTime = startTime;
+      t.endTime = endTime || startTime;
+      save();
+      // Reflect in schedule view
+      const evStart = new Date(`${startDate}T${startTime}:00`);
+      const evEnd   = new Date(`${endDate}T${t.endTime}:00`);
+      const p = proj();
+      if (p) schedTaskEvents.push({ title: t.title, color: p.color, start: evStart, end: evEnd });
+      if (S.scheduleView) renderScheduleView();
+    }
     document.getElementById('cal-time-picker').style.display = 'none';
     const calBtn = document.getElementById('cal-btn');
     calBtn.classList.add('success');
