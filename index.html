@@ -94,13 +94,26 @@ body {
 }
 .proj-prog-fill { height: 100%; border-radius: 2px; }
 .proj-prog-label { font-size: 10px; color: var(--muted); font-weight: 600; }
-.proj-del {
+.proj-del, .proj-archive {
   opacity: 0; background: none; border: none; color: var(--muted);
   cursor: pointer; font-size: 11px; padding: 3px 5px; border-radius: 4px;
   transition: all 0.1s; flex-shrink: 0;
 }
-.proj-item:hover .proj-del { opacity: 1; }
+.proj-item:hover .proj-del,
+.proj-item:hover .proj-archive { opacity: 1; }
 .proj-del:hover { color: var(--danger); }
+.proj-archive:hover { color: #00ff88; }
+.proj-item.archived { opacity: 0.5; }
+.proj-item.archived .proj-name { text-decoration: line-through; }
+.sidebar-done-toggle {
+  padding: 10px 20px 6px; font-size: 10px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
+  background: none; border: none; cursor: pointer; width: 100%;
+  text-align: left; display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+}
+.sidebar-done-toggle:hover { color: #888; }
+#done-projects-list { padding: 0 12px 8px; }
 #schedule-btn {
   margin: 6px 12px 4px; padding: 10px 14px;
   background: transparent; border: 1px solid #1e1e1e;
@@ -1139,6 +1152,8 @@ a.link-name:hover { text-decoration: underline; }
   <div id="sidebar-scroll-inner">
     <div id="sidebar-projects-label">Projects</div>
     <div id="projects-list"></div>
+    <button id="done-projects-toggle" class="sidebar-done-toggle" style="display:none">▶  Done</button>
+    <div id="done-projects-list"></div>
     <button id="schedule-btn">📅 Schedule</button>
     <button id="add-proj">＋ New Project</button>
     <button id="fb-auth-btn">Sync to Cloud</button>
@@ -1761,7 +1776,8 @@ function projItemHtml(p) {
   const done = tasks.filter(t => t.status === 'done').length;
   const total = tasks.length;
   const pct = total ? Math.round((done / total) * 100) : 0;
-  return `<div class="proj-item${p.id === S.activeId ? ' active' : ''}" data-pid="${p.id}" data-category="${p.category || 'work'}" draggable="true">
+  const isArchived = !!p.archived;
+  return `<div class="proj-item${p.id === S.activeId ? ' active' : ''}${isArchived ? ' archived' : ''}" data-pid="${p.id}" data-category="${p.category || 'work'}" ${isArchived ? '' : 'draggable="true"'}>
     <div class="proj-neon-dot" style="background:${p.color}"></div>
     <div class="proj-info">
       <div class="proj-name">${esc(p.name)}</div>
@@ -1772,13 +1788,18 @@ function projItemHtml(p) {
         <span class="proj-prog-label">${done}/${total}</span>
       </div>
     </div>
+    <button class="proj-archive" data-a="${isArchived ? 'restore-proj' : 'archive-proj'}" data-pid="${p.id}" title="${isArchived ? 'Restore project' : 'Mark as done'}">
+      ${isArchived ? '↺' : '✓'}
+    </button>
     <button class="proj-del" data-a="del-proj" data-pid="${p.id}">✕</button>
   </div>`;
 }
 
 function renderSidebar() {
-  const work     = S.projects.filter(p => (p.category || 'work') === 'work');
-  const personal = S.projects.filter(p => p.category === 'personal');
+  const active   = p => !p.archived;
+  const work     = S.projects.filter(p => active(p) && (p.category || 'work') === 'work');
+  const personal = S.projects.filter(p => active(p) && p.category === 'personal');
+  const archived = S.projects.filter(p => p.archived);
   let html = '';
   if (work.length) {
     html += `<div class="sidebar-group-label">Work</div>`;
@@ -1789,6 +1810,21 @@ function renderSidebar() {
     html += personal.map(projItemHtml).join('');
   }
   document.getElementById('projects-list').innerHTML = html;
+
+  // Done section
+  const doneList = document.getElementById('done-projects-list');
+  const doneToggle = document.getElementById('done-projects-toggle');
+  if (archived.length) {
+    doneToggle.style.display = 'flex';
+    const collapsed = S.doneCollapsed !== false; // collapsed by default
+    doneToggle.textContent = `${collapsed ? '▶' : '▼'}  Done (${archived.length})`;
+    doneList.style.display = collapsed ? 'none' : 'block';
+    doneList.innerHTML = archived.map(projItemHtml).join('');
+  } else {
+    doneToggle.style.display = 'none';
+    doneList.innerHTML = '';
+  }
+
   initSidebarDnd();
 }
 
@@ -1838,18 +1874,39 @@ function renderMain() {
 function getTask(el) { const c = el.closest('[data-tid]'); return c ? proj()?.tasks.find(t => t.id === c.dataset.tid) : null; }
 function getLink(el) { const r = el.closest('[data-lid]'); return r ? proj()?.links.find(l => l.id === r.dataset.lid) : null; }
 
-document.getElementById('projects-list').addEventListener('click', e => {
+function handleSidebarClick(e) {
   const del = e.target.closest('[data-a="del-proj"]');
   if (del) {
     e.stopPropagation();
     if (!confirm('Delete this project?')) return;
     const pid = del.dataset.pid;
     S.projects = S.projects.filter(p => p.id !== pid);
-    if (S.activeId === pid) S.activeId = S.projects[0]?.id || null;
+    if (S.activeId === pid) S.activeId = S.projects.find(p => !p.archived)?.id || null;
+    save(); render(); return;
+  }
+  const arch = e.target.closest('[data-a="archive-proj"]');
+  if (arch) {
+    e.stopPropagation();
+    const p = S.projects.find(p => p.id === arch.dataset.pid);
+    if (p) { p.archived = true; if (S.activeId === p.id) S.activeId = S.projects.find(p => !p.archived)?.id || null; }
+    save(); render(); return;
+  }
+  const restore = e.target.closest('[data-a="restore-proj"]');
+  if (restore) {
+    e.stopPropagation();
+    const p = S.projects.find(p => p.id === restore.dataset.pid);
+    if (p) { p.archived = false; }
     save(); render(); return;
   }
   const item = e.target.closest('[data-pid]');
   if (item) { S.activeId = item.dataset.pid; render(); }
+}
+document.getElementById('projects-list').addEventListener('click', handleSidebarClick);
+document.getElementById('done-projects-list').addEventListener('click', handleSidebarClick);
+
+document.getElementById('done-projects-toggle').addEventListener('click', () => {
+  S.doneCollapsed = !S.doneCollapsed;
+  renderSidebar();
 });
 
 // Hamburger sidebar toggle for mobile
