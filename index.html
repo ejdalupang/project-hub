@@ -2346,32 +2346,42 @@ async function createCalendarEvent(startDate, endDate, startTime, endTime) {
   const p = proj(); if (!p) return;
   const token = gcalToken || await gcalSignIn();
 
-  let eventStart, eventEnd;
-  if (startTime) {
-    eventStart = { dateTime: `${startDate}T${startTime}:00`, timeZone: TZ };
-    eventEnd = endTime
-      ? { dateTime: `${endDate}T${endTime}:00`, timeZone: TZ }
-      : { dateTime: `${endDate}T${startTime}:00`, timeZone: TZ };
-  } else {
-    eventStart = { date: startDate };
-    eventEnd = { date: nextDay(endDate) };
+  // Build list of dates to create events for
+  const dates = [];
+  const cur = new Date(startDate + 'T00:00:00');
+  const last = new Date(endDate + 'T00:00:00');
+  while (cur <= last) {
+    dates.push(cur.toISOString().split('T')[0]);
+    cur.setDate(cur.getDate() + 1);
   }
 
-  const event = {
-    summary: t.title || 'Task',
-    description: `Project: ${p.name}\n\nAdded from Project Hub`,
-    start: eventStart, end: eventEnd,
-    attendees: [{ email: 'ej@canva.com' }],
-    colorId: '3', visibility: 'private',
-    reminders: { useDefault: true }
-  };
+  for (const date of dates) {
+    let eventStart, eventEnd;
+    if (startTime) {
+      const et = endTime || startTime;
+      eventStart = { dateTime: `${date}T${startTime}:00`, timeZone: TZ };
+      eventEnd   = { dateTime: `${date}T${et}:00`,        timeZone: TZ };
+    } else {
+      eventStart = { date };
+      eventEnd   = { date: nextDay(date) };
+    }
 
-  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(event)
-  });
-  if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || 'Failed'); }
+    const event = {
+      summary: t.title || 'Task',
+      description: `Project: ${p.name}\n\nAdded from Project Hub`,
+      start: eventStart, end: eventEnd,
+      attendees: [{ email: 'ej@canva.com' }],
+      colorId: '3', visibility: 'private',
+      reminders: { useDefault: true }
+    };
+
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event)
+    });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || 'Failed'); }
+  }
 }
 
 async function addToCalendar() {
