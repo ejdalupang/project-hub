@@ -1350,7 +1350,8 @@ function load() {
     if (!Array.isArray(p.links)) p.links = p.links ? Object.values(p.links) : [];
     if (!Array.isArray(p.notesList)) p.notesList = p.notesList ? Object.values(p.notesList) : [];
   });
-  if (S.projects.length) S.activeId = S.projects[0].id;
+  const firstWork = S.projects.find(p => !p.archived && (p.category || 'work') === 'work');
+  S.activeId = (firstWork || S.projects.find(p => !p.archived) || S.projects[0])?.id || null;
 }
 
 let saveTimer = null;
