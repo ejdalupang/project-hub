@@ -1536,6 +1536,10 @@ function ganttView() {
     if (t.dueDate)   { const d = new Date(t.dueDate   + 'T00:00:00'); if (d > maxDate) maxDate = d; }
   });
   minDate = new Date(minDate.getTime() - PADDING_DAYS * 86400000);
+  // Snap minDate back to Monday so all week ticks land on Mondays
+  const dow = minDate.getDay();
+  const daysBack = dow === 0 ? 6 : dow - 1;
+  minDate = new Date(minDate.getTime() - daysBack * 86400000);
   maxDate = new Date(maxDate.getTime() + PADDING_DAYS * 86400000);
   const totalDays = Math.round((maxDate - minDate) / 86400000) + 1;
 
@@ -1543,11 +1547,18 @@ function ganttView() {
     return Math.round((new Date(dateStr + 'T00:00:00') - minDate) / 86400000);
   }
 
-  const tickInterval = totalDays > 60 ? 14 : totalDays > 30 ? 7 : totalDays > 14 ? 3 : 1;
+  // Always tick on Mondays (every 7 days); for wide ranges tick every 2 weeks
+  const tickInterval = totalDays > 60 ? 14 : 7;
   let axisTicks = '', gridLines = '';
+  let lastMonth = -1;
   for (let i = 0; i < totalDays; i += tickInterval) {
     const d = new Date(minDate.getTime() + i * 86400000);
-    const label = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    const month = d.getMonth();
+    // Show "3 Jul" on first tick of a new month, just "10" otherwise
+    const label = month !== lastMonth
+      ? d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+      : String(d.getDate());
+    lastMonth = month;
     const pct = (i / totalDays) * 100;
     axisTicks += `<div class="gantt-axis-tick" style="left:${pct}%"><span class="gantt-axis-tick-label">${label}</span><div class="gantt-axis-tick-line"></div></div>`;
     gridLines  += `<div class="gantt-grid-line" style="left:${pct}%"></div>`;
