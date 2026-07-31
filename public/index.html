@@ -856,13 +856,23 @@ a.link-name:hover { text-decoration: underline; }
   pointer-events: none;
 }
 .gantt-axis-tick-label {
-  font-size: 9px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.8px;
-  padding-top: 8px; white-space: nowrap;
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 3px; white-space: nowrap;
 }
+.tick-month {
+  font-size: 7px; font-weight: 700; color: #555;
+  text-transform: uppercase; letter-spacing: 0.5px; line-height: 1;
+}
+.tick-day {
+  font-size: 9px; font-weight: 600; color: var(--muted); line-height: 1.3;
+}
+.tick-monday .tick-day { color: #888; font-weight: 700; }
+.month-start .tick-day { color: #aaa; font-weight: 700; }
 .gantt-axis-tick-line {
-  width: 1px; background: var(--border); height: 8px; margin-top: 2px;
+  width: 1px; background: var(--border); height: 6px; margin-top: 1px;
 }
+.monday-line { background: #333; height: 8px; }
+.gantt-grid-line.monday-grid { background: #1e1e1e; }
 .gantt-body { position: relative; }
 .gantt-row {
   display: flex; align-items: center; min-height: 36px;
@@ -1547,21 +1557,24 @@ function ganttView() {
     return Math.round((new Date(dateStr + 'T00:00:00') - minDate) / 86400000);
   }
 
-  // Always tick on Mondays (every 7 days); for wide ranges tick every 2 weeks
-  const tickInterval = totalDays > 60 ? 14 : 7;
+  // One tick per day; show "Jul" header when month changes, just the number otherwise
   let axisTicks = '', gridLines = '';
   let lastMonth = -1;
-  for (let i = 0; i < totalDays; i += tickInterval) {
+  for (let i = 0; i < totalDays; i++) {
     const d = new Date(minDate.getTime() + i * 86400000);
     const month = d.getMonth();
-    // Show "3 Jul" on first tick of a new month, just "10" otherwise
-    const label = month !== lastMonth
-      ? d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
-      : String(d.getDate());
-    lastMonth = month;
+    const isMonday = d.getDay() === 1;
+    const isMonthStart = month !== lastMonth;
+    if (isMonthStart) lastMonth = month;
+    const dayNum = String(d.getDate());
+    const monthShort = d.toLocaleDateString('en-AU', { month: 'short' }).toUpperCase();
     const pct = (i / totalDays) * 100;
-    axisTicks += `<div class="gantt-axis-tick" style="left:${pct}%"><span class="gantt-axis-tick-label">${label}</span><div class="gantt-axis-tick-line"></div></div>`;
-    gridLines  += `<div class="gantt-grid-line" style="left:${pct}%"></div>`;
+    // Label: "JUL\n27" on month change, bold day on Monday, plain number otherwise
+    const labelHtml = isMonthStart
+      ? `<span class="gantt-axis-tick-label month-start"><span class="tick-month">${monthShort}</span><span class="tick-day">${dayNum}</span></span>`
+      : `<span class="gantt-axis-tick-label${isMonday ? ' tick-monday' : ''}"><span class="tick-day">${dayNum}</span></span>`;
+    axisTicks += `<div class="gantt-axis-tick" style="left:${pct}%">${labelHtml}<div class="gantt-axis-tick-line${isMonday ? ' monday-line' : ''}"></div></div>`;
+    gridLines  += `<div class="gantt-grid-line${isMonday ? ' monday-grid' : ''}" style="left:${pct}%"></div>`;
   }
 
   const todayOff = Math.round((today - minDate) / 86400000);
