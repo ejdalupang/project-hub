@@ -114,6 +114,75 @@ body {
 }
 .sidebar-done-toggle:hover { color: #888; }
 #done-projects-list { padding: 0 12px 8px; }
+#ask-btn {
+  margin: 6px 12px 4px; padding: 10px 14px;
+  background: transparent; border: 1px solid #2a2a4a;
+  border-radius: 12px; color: #8080cc;
+  cursor: pointer; font-size: 11px; font-family: inherit; font-weight: 700;
+  display: flex; align-items: center; gap: 6px; letter-spacing: 0.5px;
+  text-transform: uppercase; transition: all 0.1s; width: calc(100% - 24px);
+  flex-shrink: 0; touch-action: manipulation;
+}
+#ask-btn:hover { border-color: #5050aa; color: #aaaaff; background: #0a0a1a; }
+#ask-modal {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.7); padding: 20px;
+}
+#ask-modal-box {
+  background: #111; border: 1px solid #2a2a4a; border-radius: 20px;
+  width: 100%; max-width: 500px; display: flex; flex-direction: column;
+  gap: 0; overflow: hidden; max-height: 80vh;
+}
+#ask-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid #1a1a2a;
+}
+#ask-modal-title { font-size: 13px; font-weight: 700; color: #aaaaff; letter-spacing: 1px; text-transform: uppercase; }
+#ask-modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 6px; }
+#ask-modal-close:hover { color: #fff; }
+#ask-history {
+  flex: 1; overflow-y: auto; padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 12px; min-height: 80px;
+}
+.ask-msg { display: flex; flex-direction: column; gap: 4px; }
+.ask-msg.user .ask-bubble {
+  background: #1a1a3a; border-radius: 12px 12px 4px 12px;
+  padding: 10px 14px; color: #ccc; font-size: 13px; align-self: flex-end;
+}
+.ask-msg.bot .ask-bubble {
+  background: #161620; border: 1px solid #2a2a4a;
+  border-radius: 4px 12px 12px 12px;
+  padding: 12px 14px; color: #e0e0f0; font-size: 13px; line-height: 1.6;
+}
+.ask-msg.bot .ask-bubble b { color: #aaaaff; }
+#ask-input-row {
+  display: flex; gap: 8px; padding: 12px 16px;
+  border-top: 1px solid #1a1a2a;
+}
+#ask-input {
+  flex: 1; background: #0a0a14; border: 1px solid #2a2a4a;
+  border-radius: 10px; color: #f0f0ee; font-size: 13px; font-family: inherit;
+  padding: 10px 14px; outline: none;
+}
+#ask-input:focus { border-color: #5050aa; }
+#ask-send {
+  background: #2a2a6a; border: none; border-radius: 10px;
+  color: #aaaaff; font-size: 16px; cursor: pointer; padding: 10px 16px;
+  transition: background 0.1s; touch-action: manipulation;
+}
+#ask-send:hover { background: #3a3a8a; }
+#ask-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 0 16px 14px;
+}
+.ask-chip {
+  background: transparent; border: 1px solid #2a2a4a; border-radius: 20px;
+  color: #6666aa; font-size: 11px; font-family: inherit; font-weight: 600;
+  padding: 5px 12px; cursor: pointer; transition: all 0.1s;
+  touch-action: manipulation;
+}
+.ask-chip:hover { border-color: #5050aa; color: #aaaaff; background: #0a0a1a; }
 #schedule-btn {
   margin: 6px 12px 4px; padding: 10px 14px;
   background: transparent; border: 1px solid #1e1e1e;
@@ -1164,10 +1233,32 @@ a.link-name:hover { text-decoration: underline; }
     <div id="projects-list"></div>
     <button id="done-projects-toggle" class="sidebar-done-toggle" style="display:none">▶  Done</button>
     <div id="done-projects-list"></div>
+    <button id="ask-btn">✦ Ask</button>
     <button id="schedule-btn">📅 Schedule</button>
     <button id="add-proj">＋ New Project</button>
     <button id="fb-auth-btn">Sync to Cloud</button>
     <button id="fb-pull-btn" style="display:none">⬇ Pull from Cloud</button>
+  </div>
+</div>
+
+<div id="ask-modal" style="display:none">
+  <div id="ask-modal-box">
+    <div id="ask-modal-header">
+      <span id="ask-modal-title">✦ Ask</span>
+      <button id="ask-modal-close">✕</button>
+    </div>
+    <div id="ask-history"></div>
+    <div id="ask-input-row">
+      <input id="ask-input" type="text" placeholder="e.g. What's due this week?">
+      <button id="ask-send">→</button>
+    </div>
+    <div id="ask-chips">
+      <button class="ask-chip" data-q="What's due this week?">Due this week</button>
+      <button class="ask-chip" data-q="What's overdue?">Overdue</button>
+      <button class="ask-chip" data-q="What's in progress?">In progress</button>
+      <button class="ask-chip" data-q="Which project has the most tasks left?">Most tasks left</button>
+      <button class="ask-chip" data-q="Show me a summary of all projects">Summary</button>
+    </div>
   </div>
 </div>
 
@@ -1960,6 +2051,180 @@ document.getElementById('fb-auth-btn').addEventListener('click', () => {
 document.getElementById('fb-pull-btn').addEventListener('click', () => {
   if (window.__fbPull) window.__fbPull();
 });
+
+// ── Ask Feature ───────────────────────────────────────────────────────────────
+function answerQuestion(q) {
+  const raw = q.toLowerCase().trim();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const allProjects = S.projects.filter(p => !p.archived);
+
+  function daysFromNow(dateStr) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr + 'T00:00:00');
+    return Math.round((d - today) / 86400000);
+  }
+  function fmtDate(dateStr) {
+    if (!dateStr) return null;
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function findProject(hint) {
+    return allProjects.find(p => p.name.toLowerCase().includes(hint)) || null;
+  }
+  function allTasks() {
+    return allProjects.flatMap(p => p.tasks.map(t => ({ ...t, projName: p.name, projColor: p.color })));
+  }
+
+  // — Deadline / due date of a project —
+  const deadlineMatch = raw.match(/deadline|due date|end date|when.*finish|when.*due|due.*(?:for|of)|finish.*(?:for|of)/);
+  if (deadlineMatch) {
+    const hint = raw.replace(/when|is|the|deadline|due|date|of|for|finish|end|\?/g, ' ').trim();
+    const p = hint ? findProject(hint) : null;
+    if (p) {
+      const dues = p.tasks.filter(t => t.dueDate && t.status !== 'done').map(t => t.dueDate).sort();
+      const latest = dues[dues.length - 1];
+      if (!latest) return `<b>${p.name}</b> has no due dates set on any tasks.`;
+      const diff = daysFromNow(latest);
+      const when = diff === 0 ? 'today' : diff < 0 ? `${Math.abs(diff)} days ago` : `in ${diff} days`;
+      return `The latest due date on <b>${p.name}</b> is <b>${fmtDate(latest)}</b> — ${when}.`;
+    }
+    // no specific project — show all projects with upcoming deadlines
+    const withDue = allProjects.map(p => {
+      const dues = p.tasks.filter(t => t.dueDate && t.status !== 'done').map(t => t.dueDate).sort();
+      return { name: p.name, latest: dues[dues.length - 1] };
+    }).filter(x => x.latest).sort((a,b) => a.latest.localeCompare(b.latest));
+    if (!withDue.length) return 'No upcoming deadlines found across any projects.';
+    return 'Upcoming deadlines:<br>' + withDue.map(x => {
+      const diff = daysFromNow(x.latest);
+      const when = diff === 0 ? 'today' : diff < 0 ? `${Math.abs(diff)}d overdue` : `in ${diff}d`;
+      return `• <b>${x.name}</b> — ${fmtDate(x.latest)} (${when})`;
+    }).join('<br>');
+  }
+
+  // — Overdue tasks —
+  if (/overdue|past due|missed|late/.test(raw)) {
+    const overdue = allTasks().filter(t => t.dueDate && t.status !== 'done' && daysFromNow(t.dueDate) < 0);
+    if (!overdue.length) return '🎉 No overdue tasks! You\'re all caught up.';
+    return `<b>${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}:</b><br>` +
+      overdue.sort((a,b) => a.dueDate.localeCompare(b.dueDate))
+        .map(t => `• <b>${t.title || 'Untitled'}</b> — ${t.projName} (was due ${fmtDate(t.dueDate)})`).join('<br>');
+  }
+
+  // — Due this week —
+  if (/this week|week|7 days|next 7/.test(raw)) {
+    const tasks = allTasks().filter(t => t.dueDate && t.status !== 'done' && daysFromNow(t.dueDate) >= 0 && daysFromNow(t.dueDate) <= 7);
+    if (!tasks.length) return 'Nothing due in the next 7 days.';
+    return `<b>${tasks.length} task${tasks.length > 1 ? 's' : ''} due this week:</b><br>` +
+      tasks.sort((a,b) => a.dueDate.localeCompare(b.dueDate))
+        .map(t => `• <b>${t.title || 'Untitled'}</b> — ${t.projName} (${fmtDate(t.dueDate)})`).join('<br>');
+  }
+
+  // — Due today —
+  if (/today|tonight/.test(raw)) {
+    const tasks = allTasks().filter(t => t.dueDate && t.status !== 'done' && daysFromNow(t.dueDate) === 0);
+    if (!tasks.length) return 'Nothing due today.';
+    return `<b>${tasks.length} task${tasks.length > 1 ? 's' : ''} due today:</b><br>` +
+      tasks.map(t => `• <b>${t.title || 'Untitled'}</b> — ${t.projName}`).join('<br>');
+  }
+
+  // — In progress —
+  if (/in.?progress|working on|current/.test(raw)) {
+    const hint = raw.replace(/what.*in.?progress|what.*working|show|tasks|for|of|in progress|\?/g, ' ').trim();
+    const p = hint.length > 2 ? findProject(hint) : null;
+    const tasks = (p ? p.tasks : allTasks()).filter(t => t.status === 'in-progress');
+    if (!tasks.length) return p ? `No tasks in progress for <b>${p.name}</b>.` : 'No tasks currently in progress.';
+    return `<b>${tasks.length} task${tasks.length > 1 ? 's' : ''} in progress${p ? ` on ${p.name}` : ''}:</b><br>` +
+      tasks.map(t => `• <b>${t.title || 'Untitled'}</b>${!p ? ` — ${t.projName}` : ''}`).join('<br>');
+  }
+
+  // — Tasks for a specific project —
+  if (/tasks? (?:for|in|of)|show.*tasks|list.*tasks/.test(raw)) {
+    const hint = raw.replace(/show|list|tasks?|for|in|of|me|\?/g, ' ').trim();
+    const p = findProject(hint);
+    if (p) {
+      const remaining = p.tasks.filter(t => t.status !== 'done');
+      const done = p.tasks.filter(t => t.status === 'done');
+      if (!p.tasks.length) return `<b>${p.name}</b> has no tasks yet.`;
+      return `<b>${p.name}</b> — ${done.length}/${p.tasks.length} done<br>` +
+        (remaining.length ? 'Remaining:<br>' + remaining.map(t => `• ${t.title || 'Untitled'} <span style="color:#555">[${t.status}]</span>`).join('<br>') : '✓ All tasks complete!');
+    }
+  }
+
+  // — Most tasks left / most incomplete —
+  if (/most tasks|most work|most incomplete|busiest/.test(raw)) {
+    const ranked = allProjects.map(p => ({ name: p.name, left: p.tasks.filter(t => t.status !== 'done').length }))
+      .filter(x => x.left > 0).sort((a,b) => b.left - a.left);
+    if (!ranked.length) return 'All projects are fully done! 🎉';
+    return `Projects ranked by remaining tasks:<br>` + ranked.map((x,i) => `${i+1}. <b>${x.name}</b> — ${x.left} task${x.left > 1 ? 's' : ''} left`).join('<br>');
+  }
+
+  // — Summary of all projects —
+  if (/summary|overview|all projects|status/.test(raw)) {
+    if (!allProjects.length) return 'No active projects found.';
+    return '<b>Project summary:</b><br>' + allProjects.map(p => {
+      const done = p.tasks.filter(t => t.status === 'done').length;
+      const total = p.tasks.length;
+      const pct = total ? Math.round(done/total*100) : 0;
+      return `• <b>${p.name}</b> — ${done}/${total} tasks (${pct}%)`;
+    }).join('<br>');
+  }
+
+  // — How many tasks / count —
+  if (/how many|count|number of/.test(raw)) {
+    const hint = raw.replace(/how many|tasks?|are|there|in|for|of|count|number|\?/g, ' ').trim();
+    const p = hint.length > 2 ? findProject(hint) : null;
+    if (p) {
+      const done = p.tasks.filter(t => t.status === 'done').length;
+      return `<b>${p.name}</b> has <b>${p.tasks.length}</b> tasks — ${done} done, ${p.tasks.length - done} remaining.`;
+    }
+    const total = allTasks().length;
+    const done = allTasks().filter(t => t.status === 'done').length;
+    return `Across all projects: <b>${total} tasks</b> total — ${done} done, ${total - done} remaining.`;
+  }
+
+  // — Fallback —
+  return `I can answer questions like:<br>
+• "When is the deadline of [project]?"<br>
+• "What's due this week?"<br>
+• "What's overdue?"<br>
+• "What's in progress?"<br>
+• "Show tasks for [project]"<br>
+• "Which project has the most tasks left?"<br>
+• "Summary of all projects"`;
+}
+
+(function() {
+  const modal = document.getElementById('ask-modal');
+  const input = document.getElementById('ask-input');
+  const history = document.getElementById('ask-history');
+
+  function addMsg(text, role) {
+    const div = document.createElement('div');
+    div.className = `ask-msg ${role}`;
+    div.innerHTML = `<div class="ask-bubble">${text}</div>`;
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+  }
+
+  function submit() {
+    const q = input.value.trim();
+    if (!q) return;
+    addMsg(esc(q), 'user');
+    input.value = '';
+    setTimeout(() => { addMsg(answerQuestion(q), 'bot'); }, 120);
+  }
+
+  document.getElementById('ask-btn').addEventListener('click', () => { modal.style.display = 'flex'; input.focus(); });
+  document.getElementById('ask-modal-close').addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+  document.getElementById('ask-send').addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  document.getElementById('ask-chips').addEventListener('click', e => {
+    const chip = e.target.closest('.ask-chip');
+    if (!chip) return;
+    input.value = chip.dataset.q;
+    submit();
+  });
+})();
 
 document.getElementById('add-proj').addEventListener('click', () => {
   const name = prompt('Project name:');
