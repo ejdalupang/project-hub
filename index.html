@@ -2658,6 +2658,7 @@ document.getElementById('content').addEventListener('click', e => {
 const GCAL_CLIENT_ID = '701306796206-sjefkqa9ti4pdnjc2qkoclnffh0h6duu.apps.googleusercontent.com';
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly';
 let gcalToken = null;
+let gcalTokenExpiry = 0;
 
 function gcalSignIn() {
   return new Promise((resolve, reject) => {
@@ -2667,11 +2668,20 @@ function gcalSignIn() {
       callback: (resp) => {
         if (resp.error) { reject(resp); return; }
         gcalToken = resp.access_token;
+        gcalTokenExpiry = Date.now() + (resp.expires_in ? (resp.expires_in - 60) * 1000 : 3540000);
         resolve(resp.access_token);
       }
     });
     client.requestAccessToken();
   });
+}
+
+async function getGcalToken() {
+  if (!gcalToken || Date.now() >= gcalTokenExpiry) {
+    gcalToken = null;
+    return await gcalSignIn();
+  }
+  return gcalToken;
 }
 
 const TZ = 'Asia/Manila';
@@ -2691,7 +2701,7 @@ function fmtTime(h, m) {
 async function createCalendarEvent(startDate, endDate, startTime, endTime) {
   const t = getModalTask(); if (!t) return;
   const p = proj(); if (!p) return;
-  const token = gcalToken || await gcalSignIn();
+  const token = await getGcalToken();
 
   // Build list of dates — pure string arithmetic to avoid UTC offset bugs
   function stepDate(d) {
@@ -2752,7 +2762,7 @@ async function addToCalendar() {
   btn.textContent = 'Checking calendar…';
 
   try {
-    const token = gcalToken || await gcalSignIn();
+    const token = await getGcalToken();
     const refDate = t.startDate || t.dueDate;
     const dayStart = new Date(refDate + 'T00:00:00+08:00');
     const dayEnd   = new Date(refDate + 'T23:59:59+08:00');
@@ -3060,7 +3070,7 @@ async function confirmSuggestion(sg, idx) {
   };
 
   try {
-    const token = gcalToken || await gcalSignIn();
+    const token = await getGcalToken();
     const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -3092,7 +3102,7 @@ async function findFreeSlots() {
   btn.textContent = 'Finding…';
 
   try {
-    const token = gcalToken || await gcalSignIn();
+    const token = await getGcalToken();
     const { mon, sun } = getWeekBounds(S.scheduleWeekOffset);
     const timeMin = mon.toISOString();
     const timeMax = sun.toISOString();
