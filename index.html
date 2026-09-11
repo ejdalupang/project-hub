@@ -805,6 +805,68 @@ a.link-name:hover { text-decoration: underline; }
 }
 #modal-add-link-btn:hover { background: #222; color: var(--text); }
 #modal-links-list { display: flex; flex-direction: column; gap: 4px; }
+#modal-subtasks-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #1e1e1e; flex-shrink: 0; }
+#modal-subtasks-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+#modal-subtasks-heading { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+#modal-add-subtask-btn {
+  display: flex; align-items: center; gap: 5px; background: #1a1a1a;
+  border: 1px solid #2a2a2a; border-radius: 10px; cursor: pointer;
+  padding: 5px 12px; color: var(--muted); font-family: inherit; font-size: 11px;
+  font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.1s;
+}
+#modal-add-subtask-btn:hover { background: #222; color: var(--text); }
+#modal-subtasks-list { display: flex; flex-direction: column; gap: 6px; }
+.subtask-row {
+  background: #161616; border: 1px solid #222; border-radius: 12px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.subtask-main-row { display: flex; align-items: center; gap: 8px; }
+.subtask-check {
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid #444;
+  background: none; cursor: pointer; flex-shrink: 0; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; font-size: 9px;
+}
+.subtask-check.done { background: #00ff88; border-color: #00ff88; color: #000; }
+.subtask-title-input {
+  flex: 1; background: none; border: none; outline: none; color: var(--text);
+  font-family: inherit; font-size: 13px; font-weight: 600; padding: 0;
+}
+.subtask-title-input::placeholder { color: #333; }
+.subtask-title-input.done-title { text-decoration: line-through; color: #555; }
+.subtask-cal-btn {
+  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; cursor: pointer;
+  color: var(--muted); font-family: inherit; font-size: 10px; font-weight: 800;
+  padding: 3px 8px; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.1s;
+  display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;
+}
+.subtask-cal-btn:hover { background: #222; color: var(--text); border-color: #444; }
+.subtask-cal-btn.success { background: #00ff8822; border-color: #00ff88; color: #00ff88; }
+.subtask-del-btn { background: none; border: none; color: #333; cursor: pointer; font-size: 11px; padding: 3px 5px; border-radius: 5px; transition: color 0.1s; flex-shrink: 0; }
+.subtask-del-btn:hover { color: var(--danger); }
+.subtask-date-row {
+  display: flex; align-items: center; gap: 6px; padding-left: 24px; flex-wrap: wrap;
+}
+.subtask-date-input {
+  background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 8px;
+  color: #888; font-family: inherit; font-size: 11px; font-weight: 700;
+  padding: 3px 8px; outline: none; cursor: pointer; transition: all 0.1s;
+}
+.subtask-date-input.has-date { color: #ccc; border-color: #3a3a3a; }
+.subtask-time-picker { display: none; padding: 8px 0 2px 24px; display: none; }
+.subtask-time-picker.open { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.subtask-time-input {
+  background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 8px;
+  color: #888; font-family: inherit; font-size: 11px; font-weight: 700;
+  padding: 3px 8px; outline: none; cursor: pointer; transition: all 0.1s; width: 100px;
+}
+.subtask-time-input.has-val { color: #ccc; }
+.subtask-cal-confirm-btn {
+  background: #b668ff; border: none; border-radius: 8px; cursor: pointer;
+  color: #fff; font-family: inherit; font-size: 11px; font-weight: 800;
+  padding: 4px 10px; text-transform: uppercase; letter-spacing: 0.5px; transition: filter 0.1s;
+}
+.subtask-cal-confirm-btn:hover { filter: brightness(1.1); }
+.card-subtask-bar { font-size: 9px; font-weight: 800; color: rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
 .note-entry {
   background: #161616; border: 1px solid #222; border-radius: 14px; overflow: hidden;
 }
@@ -1177,12 +1239,16 @@ a.link-name:hover { text-decoration: underline; }
             fbData.projects = Array.isArray(fbData.projects)
               ? fbData.projects
               : Object.values(fbData.projects);
-            fbData.projects = fbData.projects.map(p => ({
-              ...p,
-              tasks: Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : []),
-              links: Array.isArray(p.links) ? p.links : (p.links ? Object.values(p.links) : []),
-              notesList: Array.isArray(p.notesList) ? p.notesList : (p.notesList ? Object.values(p.notesList) : [])
-            }));
+            fbData.projects = fbData.projects.map(p => {
+              const tasks = (Array.isArray(p.tasks) ? p.tasks : (p.tasks ? Object.values(p.tasks) : []));
+              tasks.forEach(t => { if (!Array.isArray(t.subtasks)) t.subtasks = []; });
+              return {
+                ...p,
+                tasks,
+                links: Array.isArray(p.links) ? p.links : (p.links ? Object.values(p.links) : []),
+                notesList: Array.isArray(p.notesList) ? p.notesList : (p.notesList ? Object.values(p.notesList) : [])
+              };
+            });
           }
           localStorage.setItem('project-hub-data-v2', JSON.stringify(fbData));
           location.reload();
@@ -1380,6 +1446,13 @@ a.link-name:hover { text-decoration: underline; }
         </div>
         <div id="modal-links-list"></div>
       </div>
+      <div id="modal-subtasks-section">
+        <div id="modal-subtasks-header">
+          <span id="modal-subtasks-heading">Subtasks</span>
+          <button id="modal-add-subtask-btn">＋ Add Subtask</button>
+        </div>
+        <div id="modal-subtasks-list"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1450,6 +1523,7 @@ function load() {
     if (!Array.isArray(p.tasks)) p.tasks = p.tasks ? Object.values(p.tasks) : [];
     if (!Array.isArray(p.links)) p.links = p.links ? Object.values(p.links) : [];
     if (!Array.isArray(p.notesList)) p.notesList = p.notesList ? Object.values(p.notesList) : [];
+    p.tasks.forEach(t => { if (!Array.isArray(t.subtasks)) t.subtasks = []; });
   });
   const firstWork = S.projects.find(p => !p.archived && (p.category || 'work') === 'work');
   S.activeId = (firstWork || S.projects.find(p => !p.archived) || S.projects[0])?.id || null;
@@ -1516,6 +1590,11 @@ function cardHtml(task, draggable = false) {
       ${dueEl(task)}
       ${nc ? `<span class="card-note-count">◈ ${nc}</span>` : ''}
     </div>
+    ${(task.subtasks && task.subtasks.length) ? (() => {
+      const st = task.subtasks;
+      const done = st.filter(s => s.done).length;
+      return `<div class="card-subtask-bar">${done}/${st.length} subtasks</div>`;
+    })() : ''}
   </div>`;
 }
 
@@ -2448,6 +2527,36 @@ function renderModalLinks() {
   `).join('');
 }
 
+function renderSubtasks() {
+  const t = getModalTask(); if (!t) return;
+  if (!Array.isArray(t.subtasks)) t.subtasks = [];
+  const list = document.getElementById('modal-subtasks-list');
+  list.innerHTML = t.subtasks.map((s, i) => `
+    <div class="subtask-row" data-si="${i}">
+      <div class="subtask-main-row">
+        <button class="subtask-check${s.done ? ' done' : ''}" data-a="subtask-toggle" data-si="${i}">${s.done ? '✓' : ''}</button>
+        <input class="subtask-title-input${s.done ? ' done-title' : ''}" type="text" placeholder="Subtask name…" value="${esc(s.title || '')}" data-a="subtask-title" data-si="${i}">
+        <button class="subtask-cal-btn${s.calAdded ? ' success' : ''}" data-a="subtask-cal" data-si="${i}">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          ${s.calAdded ? 'Added' : 'Calendar'}
+        </button>
+        <button class="subtask-del-btn" data-a="subtask-del" data-si="${i}">✕</button>
+      </div>
+      <div class="subtask-date-row">
+        <input class="subtask-date-input${s.startDate ? ' has-date' : ''}" type="date" data-a="subtask-start" data-si="${i}" value="${s.startDate || ''}" title="Start date">
+        <span style="color:#444;font-size:12px">→</span>
+        <input class="subtask-date-input${s.endDate ? ' has-date' : ''}" type="date" data-a="subtask-end" data-si="${i}" value="${s.endDate || ''}" title="End date">
+      </div>
+      <div class="subtask-time-picker${s._showCal ? ' open' : ''}" data-si="${i}">
+        <input class="subtask-time-input${s.startTime ? ' has-val' : ''}" type="time" data-a="subtask-stime" data-si="${i}" value="${s.startTime || ''}" placeholder="Start">
+        <span style="color:#444">→</span>
+        <input class="subtask-time-input${s.endTime ? ' has-val' : ''}" type="time" data-a="subtask-etime" data-si="${i}" value="${s.endTime || ''}" placeholder="End">
+        <button class="subtask-cal-confirm-btn" data-a="subtask-cal-confirm" data-si="${i}">Confirm</button>
+      </div>
+    </div>
+  `).join('');
+}
+
 function openModal(taskId) {
   const p = proj(); if (!p) return;
   const task = p.tasks.find(t => t.id === taskId); if (!task) return;
@@ -2458,6 +2567,7 @@ function openModal(taskId) {
   updateModalMeta(task);
   renderNotesList();
   renderModalLinks();
+  renderSubtasks();
 
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -2636,6 +2746,84 @@ document.getElementById('modal-links-list').addEventListener('change', e => {
     const row = e.target.closest('[data-tlid]');
     const l = t.links?.find(l => l.id === row?.dataset.tlid);
     if (l) { l.url = e.target.value.trim(); save(); renderModalLinks(); }
+  }
+});
+
+// ── Subtask handlers ──────────────────────────────────────────────────────────
+document.getElementById('modal-add-subtask-btn').addEventListener('click', () => {
+  const t = getModalTask(); if (!t) return;
+  if (!Array.isArray(t.subtasks)) t.subtasks = [];
+  t.subtasks.push({ id: uid(), title: '', done: false, startDate: '', endDate: '', startTime: '', endTime: '' });
+  save(); renderSubtasks();
+  setTimeout(() => {
+    const els = document.querySelectorAll('#modal-subtasks-list .subtask-title-input');
+    if (els.length) els[els.length - 1].focus();
+  }, 40);
+});
+
+document.getElementById('modal-subtasks-list').addEventListener('input', e => {
+  const t = getModalTask(); if (!t) return;
+  const si = e.target.dataset.si;
+  if (si === undefined) return;
+  const s = t.subtasks[+si]; if (!s) return;
+  const a = e.target.dataset.a;
+  if (a === 'subtask-title') { s.title = e.target.value; save(); renderMain(); }
+  if (a === 'subtask-start') { s.startDate = e.target.value; save(); }
+  if (a === 'subtask-end') { s.endDate = e.target.value; save(); }
+  if (a === 'subtask-stime') { s.startTime = e.target.value; }
+  if (a === 'subtask-etime') { s.endTime = e.target.value; }
+});
+
+document.getElementById('modal-subtasks-list').addEventListener('change', e => {
+  const t = getModalTask(); if (!t) return;
+  const si = e.target.dataset.si;
+  if (si === undefined) return;
+  const s = t.subtasks[+si]; if (!s) return;
+  const a = e.target.dataset.a;
+  if (a === 'subtask-start' || a === 'subtask-end') { save(); }
+});
+
+document.getElementById('modal-subtasks-list').addEventListener('click', async e => {
+  const t = getModalTask(); if (!t) return;
+  const btn = e.target.closest('[data-a]'); if (!btn) return;
+  const a = btn.dataset.a;
+  const si = +btn.dataset.si;
+  const s = t.subtasks[si]; if (!s) return;
+
+  if (a === 'subtask-toggle') {
+    s.done = !s.done;
+    save(); renderSubtasks(); renderMain();
+    return;
+  }
+  if (a === 'subtask-del') {
+    t.subtasks.splice(si, 1);
+    save(); renderSubtasks(); renderMain();
+    return;
+  }
+  if (a === 'subtask-cal') {
+    s._showCal = !s._showCal;
+    renderSubtasks();
+    return;
+  }
+  if (a === 'subtask-cal-confirm') {
+    const row = btn.closest('.subtask-row');
+    const stime = row.querySelector('[data-a="subtask-stime"]').value;
+    const etime = row.querySelector('[data-a="subtask-etime"]').value;
+    const startDate = s.startDate || s.endDate;
+    const endDate = s.endDate || s.startDate;
+    if (!startDate) { alert('Set a date for this subtask first.'); return; }
+    if (!stime) { alert('Set a start time.'); return; }
+    btn.textContent = 'Adding…'; btn.disabled = true;
+    try {
+      await createCalendarEvent(startDate, endDate || startDate, stime, etime);
+      s.startTime = stime; s.endTime = etime; s.calAdded = true; s._showCal = false;
+      save(); renderSubtasks();
+    } catch(err) {
+      alert('Could not add to calendar: ' + (err.message || err));
+    } finally {
+      btn.textContent = 'Confirm'; btn.disabled = false;
+    }
+    return;
   }
 });
 
